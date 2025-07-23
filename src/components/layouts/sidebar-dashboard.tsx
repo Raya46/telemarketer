@@ -9,6 +9,7 @@ import {
 import { Bot, Settings, LifeBuoy, Book, LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { logout } from "@/app/(actions)/auth/actions";
 
 const dashboardMenu = [
   {
@@ -35,6 +36,9 @@ const dashboardMenu = [
 
 export function SidebarDashboard() {
   const pathname = usePathname();
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <SidebarContent>
@@ -57,7 +61,7 @@ export function SidebarDashboard() {
         <SidebarMenu>
           <SidebarMenuItem>
             <Link href="/auth/login" passHref>
-              <SidebarMenuButton className="w-full">
+              <SidebarMenuButton onClick={handleLogout} className="w-full">
                 <LogOut className="w-4 h-4" />
                 <span>Logout</span>
               </SidebarMenuButton>
