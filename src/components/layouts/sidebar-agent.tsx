@@ -14,11 +14,17 @@ import {
   Bolt,
   FileText,
   ChevronLeft,
+  PersonStanding,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const agentMenu = (id: string) => [
+  {
+    href: `/dashboard/agents/${id}`,
+    label: "AI Agent",
+    icon: <PersonStanding className="w-4 h-4" />,
+  },
   {
     href: `/dashboard/agents/${id}/call-history`,
     label: "Call History",
@@ -33,11 +39,6 @@ const agentMenu = (id: string) => [
     href: `/dashboard/agents/${id}/knowledge-base`,
     label: "Knowledge Base",
     icon: <BrainCircuit className="w-4 h-4" />,
-  },
-  {
-    href: `/dashboard/agents/${id}/behavior`,
-    label: "Behavior",
-    icon: <Bot className="w-4 h-4" />,
   },
   {
     href: `/dashboard/agents/${id}/actions`,
