@@ -42,10 +42,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  Upload
+  Upload,
+  Loader2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { createAgent } from "@/app/(actions)/agents/actions"; 
+
 
 // --- Data & Tipe ---
 const steps = [
@@ -256,10 +259,13 @@ function Step3EmbedAgent({ state, setState }: any) {
 export default function CreateAgentPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const router = useRouter();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   
   // State terpusat untuk semua data form
   const [formState, setFormState] = useState({
-    agentId: 'agent_' + crypto.randomUUID(),
+    // agentId: 'agent_' + crypto.randomUUID(),
     avatarFile: null as File | null,
     agentName: '',
     language: 'id',
@@ -281,16 +287,46 @@ export default function CreateAgentPage() {
     requirePhone: true,
   });
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < steps.length) {
+      if (currentStep === 1 && !formState.agentName.trim()) {
+        console.error("Please provide an agent name before continuing.");
+
+        return;
+      }
       setCurrentStep(currentStep + 1);
-    } else {
-      console.log("Final Agent State:", formState);
-      router.push(`/dashboard/agents/${formState.agentId}`);
+      return;
+    }
+  
+    setIsSubmitting(true);
+  
+    const formData = new FormData();
+    Object.entries(formState).forEach(([key, value]) => {
+      if (value instanceof File) {
+        formData.append(key, value);
+      } else if (typeof value === 'boolean') {
+        formData.append(key, String(value));
+      } else if (value != null) {
+        formData.append(key, value as string);
+      }
+    });
+  
+    try {
+      const result = await createAgent(formData);
+      if (result && !result.success) {
+        console.error("An unknown error occurred.");
+
+      }
+    } catch (error) {
+      console.error("Submission failed:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
+  
 
   const handleBack = () => {
+    if (isSubmitting) return;
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     } else {
@@ -339,13 +375,22 @@ export default function CreateAgentPage() {
         </Card>
 
         <div className="flex justify-between mt-6">
-          <Button variant="outline" onClick={handleBack}>
+          <Button variant="outline" onClick={handleBack} disabled={isSubmitting}>
             <ChevronLeft className="h-4 w-4 mr-2" />
             {currentStep === 1 ? 'Cancel' : 'Back'}
           </Button>
-          <Button onClick={handleNext} className="btn-primary">
-            {currentStep === steps.length ? 'Finish & Create Agent' : 'Next'}
-            <ChevronRight className="h-4 w-4 ml-2" />
+          <Button onClick={handleNext} className="btn-primary" disabled={isSubmitting}>
+            {isSubmitting && currentStep === steps.length ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Agent...
+              </>
+            ) : (
+              <>
+                {currentStep === steps.length ? 'Finish & Create Agent' : 'Next'}
+                {currentStep < steps.length && <ChevronRight className="h-4 w-4 ml-2" />}
+              </>
+            )}
           </Button>
         </div>
       </div>
