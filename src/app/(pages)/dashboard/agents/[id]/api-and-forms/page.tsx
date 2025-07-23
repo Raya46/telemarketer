@@ -14,7 +14,6 @@ import { Copy, Save } from "lucide-react";
 import { useState } from "react";
 
 export default function ApiAndFormsPage() {
-  // Data rekaan untuk ID agen
   const agentId = "agent_12345-abcde-67890";
   const embedCode = `<script src="https://your-domain.com/embed/${agentId}.js"></script>`;
   const webhookUrl = `https://your-api.com/webhook/${agentId}`;
