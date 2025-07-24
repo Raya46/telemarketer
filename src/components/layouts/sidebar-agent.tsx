@@ -19,6 +19,18 @@ import {
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
+// Palet warna yang sama dari halaman sebelumnya
+const colors = {
+  background: "#1C162C",
+  card: "#2A2342",
+  primaryText: "#E0DDF1",
+  secondaryText: "#A09CB9",
+  accent: "#7F56D9",
+  accentHover: "#6941C6",
+  activeBackground: "rgba(127, 86, 217, 0.1)", // Background lembut untuk item aktif
+};
+
+
 const agentMenu = (id: string) => [
   {
     href: `/dashboard/agents/${id}`,
@@ -62,21 +74,28 @@ export function SidebarAgent({ id }: { id: string }) {
   const menuItems = agentMenu(id);
 
   return (
-    <SidebarContent>
+    <SidebarContent style={{ backgroundColor: colors.background, borderRight: `1px solid ${colors.border}` }}>
       <SidebarMenu>
-        {menuItems.map((item) => (
-          <SidebarMenuItem key={item.href}>
-            <Link href={item.href} passHref>
-              <SidebarMenuButton
-                isActive={pathname === item.href}
-                className="w-full"
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </SidebarMenuButton>
-            </Link>
-          </SidebarMenuItem>
-        ))}
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <SidebarMenuItem key={item.href}>
+              <Link href={item.href} passHref className="w-full">
+                <SidebarMenuButton
+                  isActive={isActive}
+                  className="w-full transition-colors duration-200"
+                  style={{
+                    backgroundColor: isActive ? colors.activeBackground : "transparent",
+                    color: isActive ? colors.accent : colors.secondaryText,
+                  }}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarMenu>
     </SidebarContent>
   );
