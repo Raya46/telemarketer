@@ -19,6 +19,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Phone, Check, X, Clock, PhoneMissed, PhoneForwarded } from "lucide-react";
 
+const colors = {
+  background: "#1C162C",
+  card: "#2A2342",
+  primaryText: "#E0DDF1",
+  secondaryText: "#A09CB9",
+  accent: "#7F56D9",
+  accentHover: "#6941C6",
+  border: "#423966",
+};
+
 // --- Tipe Data & Data Rekaan ---
 
 type CallStatus = "success" | "failed" | "pending" | "not_answered";
@@ -55,7 +65,7 @@ const StatusBadge = ({ status }: { status: CallStatus }) => {
   const config = statusConfig[status];
 
   return (
-    <Badge variant="outline" className={`gap-1.5 ${config.color}`}>
+    <Badge variant="outline" className={`gap-1.5 ${config.color}`} style={{ borderColor: colors.border, color: colors.primaryText }}>
       {config.icon}
       {config.text}
     </Badge>
@@ -66,54 +76,64 @@ const StatusBadge = ({ status }: { status: CallStatus }) => {
 
 export default function CallHistoryPage() {
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div
+      className="min-h-screen p-4 sm:p-6 space-y-6"
+      style={{ backgroundColor: colors.background }}
+    >
        <div>
-        <h1 className="text-2xl font-bold">Riwayat Panggilan</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold" style={{ color: colors.primaryText }}>Riwayat Panggilan</h1>
+        <p className="text-gray-500" style={{ color: colors.secondaryText }}>
           Lihat dan kelola riwayat panggilan agen di sini.
         </p>
       </div>
 
       {/* Tabel Log Panggilan */}
-      <Card>
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
         <CardHeader>
-          <CardTitle>Log Panggilan</CardTitle>
-          <CardDescription>
+          <CardTitle style={{ color: colors.primaryText }}>Log Panggilan</CardTitle>
+          <CardDescription style={{ color: colors.secondaryText }}>
             Daftar detail dari setiap panggilan yang telah dilakukan oleh agen.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Kontak</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Durasi</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+              <TableRow style={{ color: colors.primaryText }}>
+                <TableHead style={{ color: colors.secondaryText }}>Kontak</TableHead>
+                <TableHead style={{ color: colors.secondaryText }}>Status</TableHead>
+                <TableHead style={{ color: colors.secondaryText }}>Durasi</TableHead>
+                <TableHead style={{ color: colors.secondaryText }}>Tanggal</TableHead>
+                <TableHead className="text-right" style={{ color: colors.secondaryText }}>Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {callLogs.map((log) => (
-                <TableRow key={log.id}>
+                <TableRow key={log.id} style={{ color: colors.primaryText }}>
                   <TableCell>
-                    <div className="font-medium">{log.contactName}</div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="font-medium" style={{ color: colors.primaryText }}>{log.contactName}</div>
+                    <div className="text-sm text-muted-foreground" style={{ color: colors.secondaryText }}>
                       {log.contactNumber}
                     </div>
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={log.status} />
                   </TableCell>
-                  <TableCell>{log.duration}</TableCell>
-                  <TableCell>{log.date}</TableCell>
+                  <TableCell style={{ color: colors.primaryText }}>{log.duration}</TableCell>
+                  <TableCell style={{ color: colors.primaryText }}>{log.date}</TableCell>
                   <TableCell className="text-right">
                     {/* Tombol "Telepon Kembali" hanya muncul jika statusnya 'failed' atau 'not_answered' */}
                     {(log.status === 'failed' || log.status === 'not_answered') && (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => alert(`Menelpon kembali ${log.contactName}...`)}
+                        style={{ backgroundColor: colors.accent, color: colors.primaryText, borderColor: colors.border }}
+                        onMouseOver={(e) =>
+                          (e.currentTarget.style.backgroundColor = colors.accentHover)
+                        }
+                        onMouseOut={(e) =>
+                          (e.currentTarget.style.backgroundColor = colors.accent)
+                        }
                       >
                         <PhoneForwarded className="h-4 w-4 mr-2" />
                         Telepon Kembali

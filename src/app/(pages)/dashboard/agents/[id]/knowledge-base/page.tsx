@@ -14,6 +14,17 @@ import { FileText, Loader2, Save, Trash2, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
+const colors = {
+  background: "#1C162C",
+  card: "#2A2342",
+  primaryText: "#E0DDF1",
+  secondaryText: "#A09CB9",
+  accent: "#7F56D9",
+  accentHover: "#6941C6",
+  border: "#423966",
+  dashedBorder: "#5A5178",
+};
+
 // Tipe data untuk file yang diunggah
 interface KnowledgeFile {
   id: string;
@@ -76,10 +87,15 @@ export default function KnowledgeBasePage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div
+      className="min-h-screen p-4 sm:p-6 space-y-6"
+      style={{ backgroundColor: colors.background }}
+    >
       <div>
-        <h1 className="text-2xl font-bold">Knowledge Base</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold" style={{ color: colors.primaryText }}>
+          Knowledge Base
+        </h1>
+        <p className="text-gray-500" style={{ color: colors.secondaryText }}>
           Kelola system prompt dan dokumen untuk melatih agen AI Anda.
         </p>
       </div>
@@ -87,10 +103,10 @@ export default function KnowledgeBasePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Kolom Kiri: System Prompt */}
         <div className="lg:col-span-2">
-          <Card>
+          <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
             <CardHeader>
-              <CardTitle>System Prompt</CardTitle>
-              <CardDescription>
+              <CardTitle style={{ color: colors.primaryText }}>System Prompt</CardTitle>
+              <CardDescription style={{ color: colors.secondaryText }}>
                 Ini adalah instruksi inti yang akan selalu diikuti oleh agen Anda.
               </CardDescription>
             </CardHeader>
@@ -98,8 +114,12 @@ export default function KnowledgeBasePage() {
               <Textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                className="min-h-[200px] font-mono text-sm"
+                className="min-h-[200px] font-mono text-sm bg-transparent border-2 focus:ring-1 focus:ring-offset-0 focus:ring-offset-transparent"
                 placeholder="Masukkan instruksi untuk agen di sini..."
+                style={{
+                  color: colors.primaryText,
+                  borderColor: colors.border,
+                }}
               />
             </CardContent>
           </Card>
@@ -107,10 +127,10 @@ export default function KnowledgeBasePage() {
 
         {/* Kolom Kanan: Dokumen */}
         <div className="space-y-6">
-          <Card>
+          <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
             <CardHeader>
-              <CardTitle>Documents</CardTitle>
-              <CardDescription>
+              <CardTitle style={{ color: colors.primaryText }}>Documents</CardTitle>
+              <CardDescription style={{ color: colors.secondaryText }}>
                 Tambah atau hapus dokumen untuk memperluas pengetahuan agen.
               </CardDescription>
             </CardHeader>
@@ -120,13 +140,17 @@ export default function KnowledgeBasePage() {
                 className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                   isDragActive ? 'border-primary bg-primary/10' : 'border-gray-300 hover:border-primary/50'
                 }`}
+                style={{
+                  backgroundColor: "transparent",
+                  borderColor: colors.dashedBorder,
+                }}
               >
                 <input {...getInputProps()} />
-                <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-sm font-medium text-gray-600">
+                <Upload className="h-8 w-8" style={{ color: colors.secondaryText }} />
+                <p className="text-sm font-medium" style={{ color: colors.primaryText }}>
                   {isDragActive ? "Lepaskan file di sini..." : "Drag & drop atau klik untuk upload"}
                 </p>
-                <p className="text-xs text-gray-500">PDF, DOCX, TXT (Max 10MB)</p>
+                <p className="text-xs" style={{ color: colors.secondaryText }}>PDF, DOCX, TXT (Max 10MB)</p>
               </div>
             </CardContent>
           </Card>
@@ -134,39 +158,53 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* Daftar File yang Diunggah */}
-      <Card>
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
         <CardHeader>
-            <CardTitle>Uploaded Documents</CardTitle>
+            <CardTitle style={{ color: colors.primaryText }}>Uploaded Documents</CardTitle>
         </CardHeader>
         <CardContent>
             <div className="space-y-3">
                 {files.length > 0 ? files.map(file => (
-                    <div key={file.id} className="flex items-center justify-between p-3 rounded-md border bg-slate-50">
+                    <div key={file.id} className="flex items-center justify-between p-3 rounded-md border" style={{ backgroundColor: colors.card, borderColor: colors.border }}>
                         <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-gray-500" />
+                            <FileText className="h-5 w-5" style={{ color: colors.secondaryText }} />
                             <div>
-                                <p className="font-medium text-sm">{file.name}</p>
-                                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                                <p className="font-medium text-sm" style={{ color: colors.primaryText }}>{file.name}</p>
+                                <p className="text-xs" style={{ color: colors.secondaryText }}>{formatFileSize(file.size)}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
-                            {file.status === 'ready' && <Badge className="bg-green-100 text-green-800">Ready</Badge>}
-                            {file.status === 'processing' && <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Processing</Badge>}
-                            {file.status === 'error' && <Badge variant="destructive">Error</Badge>}
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteFile(file.id)}>
+                            {file.status === 'ready' && <Badge className="bg-green-100 text-green-800" style={{ backgroundColor: colors.accent, color: colors.primaryText }}>Ready</Badge>}
+                            {file.status === 'processing' && <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1" style={{ backgroundColor: colors.accent, color: colors.primaryText }}><Loader2 className="h-3 w-3 animate-spin"/> Processing</Badge>}
+                            {file.status === 'error' && <Badge variant="destructive" style={{ backgroundColor: colors.accent, color: colors.primaryText }}>Error</Badge>}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteFile(file.id)}
+                              style={{ color: colors.secondaryText }}
+                            >
                                 <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                         </div>
                     </div>
                 )) : (
-                    <p className="text-sm text-center text-gray-500 py-4">Belum ada dokumen yang diunggah.</p>
+                    <p className="text-sm text-center" style={{ color: colors.secondaryText }}>Belum ada dokumen yang diunggah.</p>
                 )}
             </div>
         </CardContent>
       </Card>
       
       <div className="flex justify-end mt-6">
-        <Button onClick={() => alert('Perubahan disimpan!')}>
+        <Button
+          onClick={() => alert('Perubahan disimpan!')}
+          style={{ backgroundColor: colors.accent, color: colors.primaryText }}
+          onMouseOver={(e) =>
+            (e.currentTarget.style.backgroundColor = colors.accentHover)
+          }
+          onMouseOut={(e) =>
+            (e.currentTarget.style.backgroundColor = colors.accent)
+          }
+        >
             <Save className="mr-2 h-4 w-4" />
             Save Changes
         </Button>

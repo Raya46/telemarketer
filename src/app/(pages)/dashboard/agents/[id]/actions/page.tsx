@@ -13,6 +13,16 @@ import { Switch } from "@/components/ui/switch";
 import { Save, Mail, Calendar, Zap } from "lucide-react";
 import { useState } from "react";
 
+const colors = {
+  background: "#1C162C",
+  card: "#2A2342",
+  primaryText: "#E0DDF1",
+  secondaryText: "#A09CB9",
+  accent: "#7F56D9",
+  accentHover: "#6941C6",
+  border: "#423966",
+};
+
 // Tipe data untuk setiap aksi/tool
 interface AgentAction {
   id: string;
@@ -60,18 +70,23 @@ export default function ActionsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div
+      className="min-h-screen p-4 sm:p-6 space-y-6"
+      style={{ backgroundColor: colors.background }}
+    >
       <div>
-        <h1 className="text-2xl font-bold">Actions</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold" style={{ color: colors.primaryText }}>
+          Actions
+        </h1>
+        <p className="text-gray-500" style={{ color: colors.secondaryText }}>
           Konfigurasi tool dan aksi yang dapat dilakukan oleh agen AI Anda.
         </p>
       </div>
 
-      <Card>
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
         <CardHeader>
-          <CardTitle>Tool Calling Actions</CardTitle>
-          <CardDescription>
+          <CardTitle style={{ color: colors.primaryText }}>Tool Calling Actions</CardTitle>
+          <CardDescription style={{ color: colors.secondaryText }}>
             Aktifkan atau nonaktifkan kemampuan agen untuk menggunakan tool eksternal.
           </CardDescription>
         </CardHeader>
@@ -82,15 +97,16 @@ export default function ActionsPage() {
               return (
                 <div
                   key={action.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-slate-50"
+                  className="flex items-center justify-between p-4 rounded-lg border"
+                  style={{ backgroundColor: colors.card, borderColor: colors.border }}
                 >
                   <div className="flex items-center gap-4">
-                    <Icon className="h-6 w-6 text-gray-600" />
+                    <Icon className="h-6 w-6" style={{ color: colors.secondaryText }} />
                     <div>
-                      <Label htmlFor={action.id} className="font-semibold">
+                      <Label htmlFor={action.id} className="font-semibold" style={{ color: colors.primaryText }}>
                         {action.name}
                       </Label>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500" style={{ color: colors.secondaryText }}>
                         {action.description}
                       </p>
                     </div>
@@ -101,6 +117,7 @@ export default function ActionsPage() {
                     onCheckedChange={(checked) =>
                       handleToggleAction(action.id, checked)
                     }
+                    style={{ backgroundColor: action.enabled ? colors.accent : colors.border }}
                   />
                 </div>
               );
@@ -110,7 +127,16 @@ export default function ActionsPage() {
       </Card>
 
       <div className="flex justify-end mt-6">
-        <Button onClick={() => alert("Perubahan disimpan!")}>
+        <Button
+          onClick={() => alert("Perubahan disimpan!")}
+          style={{ backgroundColor: colors.accent, color: colors.primaryText }}
+          onMouseOver={(e) =>
+            (e.currentTarget.style.backgroundColor = colors.accentHover)
+          }
+          onMouseOut={(e) =>
+            (e.currentTarget.style.backgroundColor = colors.accent)
+          }
+        >
           <Save className="mr-2 h-4 w-4" />
           Save Changes
         </Button>

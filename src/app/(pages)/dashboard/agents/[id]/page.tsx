@@ -28,6 +28,16 @@ import {
 } from "recharts";
 import { Phone, Check, X, Clock, PhoneMissed } from "lucide-react";
 
+const colors = {
+  background: "#1C162C",
+  card: "#2A2342",
+  primaryText: "#E0DDF1",
+  secondaryText: "#A09CB9",
+  accent: "#7F56D9",
+  accentHover: "#6941C6",
+  border: "#423966",
+};
+
 // --- Tipe Data & Data Rekaan ---
 
 type CallStatus = "success" | "failed" | "pending" | "not_answered";
@@ -64,7 +74,7 @@ const StatusBadge = ({ status }: { status: CallStatus }) => {
   const config = statusConfig[status];
 
   return (
-    <Badge variant="outline" className={`gap-1.5 ${config.color}`}>
+    <Badge variant="outline" className={`gap-1.5 ${config.color}`} style={{ borderColor: colors.border, color: colors.primaryText }}>
       {config.icon}
       {config.text}
     </Badge>
@@ -81,78 +91,81 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
 
   // Data untuk bar chart
   const chartData = [
-    { name: 'Success', count: successfulCalls, fill: '#22c55e' },
-    { name: 'Failed', count: callLogs.filter(call => call.status === 'failed').length, fill: '#ef4444' },
-    { name: 'Not Answered', count: callLogs.filter(call => call.status === 'not_answered').length, fill: '#6b7280' },
-    { name: 'Pending', count: callLogs.filter(call => call.status === 'pending').length, fill: '#f59e0b' },
+    { name: 'Success', count: successfulCalls, fill: colors.accent },
+    { name: 'Failed', count: callLogs.filter(call => call.status === 'failed').length, fill: colors.accentHover },
+    { name: 'Not Answered', count: callLogs.filter(call => call.status === 'not_answered').length, fill: colors.secondaryText },
+    { name: 'Pending', count: callLogs.filter(call => call.status === 'pending').length, fill: colors.border },
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div
+      className="min-h-screen p-4 sm:p-6 space-y-6"
+      style={{ backgroundColor: colors.background }}
+    >
       <div>
-        <h1 className="text-2xl font-bold">Agent Overview</h1>
-        <p className="text-gray-500">
-          Displaying analytics for agent <span className="font-mono font-medium">{params.id}</span>
+        <h1 className="text-2xl font-bold" style={{ color: colors.primaryText }}>Agent Overview</h1>
+        <p className="text-gray-500" style={{ color: colors.secondaryText }}>
+          Displaying analytics for agent <span className="font-mono font-medium" style={{ color: colors.primaryText }}>{params.id}</span>
         </p>
       </div>
 
       {/* Kartu Statistik */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Panggilan</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium" style={{ color: colors.primaryText }}>Total Panggilan</CardTitle>
+            <Phone className="h-4 w-4" style={{ color: colors.secondaryText }} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCalls}</div>
-            <p className="text-xs text-muted-foreground">Total panggilan yang dilakukan</p>
+            <div className="text-2xl font-bold" style={{ color: colors.primaryText }}>{totalCalls}</div>
+            <p className="text-xs text-muted-foreground" style={{ color: colors.secondaryText }}>Total panggilan yang dilakukan</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Panggilan Berhasil</CardTitle>
-            <Check className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium" style={{ color: colors.primaryText }}>Panggilan Berhasil</CardTitle>
+            <Check className="h-4 w-4" style={{ color: colors.secondaryText }} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{successfulCalls}</div>
-            <p className="text-xs text-muted-foreground">Panggilan dengan status 'success'</p>
+            <div className="text-2xl font-bold" style={{ color: colors.primaryText }}>{successfulCalls}</div>
+            <p className="text-xs text-muted-foreground" style={{ color: colors.secondaryText }}>Panggilan dengan status 'success'</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tingkat Keberhasilan</CardTitle>
-            <div className="text-green-500 font-bold">%</div>
+            <CardTitle className="text-sm font-medium" style={{ color: colors.primaryText }}>Tingkat Keberhasilan</CardTitle>
+            <div className="font-bold" style={{ color: colors.accent }}>%</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{successRate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">Persentase panggilan berhasil</p>
+            <div className="text-2xl font-bold" style={{ color: colors.primaryText }}>{successRate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground" style={{ color: colors.secondaryText }}>Persentase panggilan berhasil</p>
           </CardContent>
         </Card>
-         <Card>
+         <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Panggilan Gagal</CardTitle>
-            <X className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium" style={{ color: colors.primaryText }}>Panggilan Gagal</CardTitle>
+            <X className="h-4 w-4" style={{ color: colors.secondaryText }} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{callLogs.filter(call => call.status === 'failed').length}</div>
-            <p className="text-xs text-muted-foreground">Panggilan dengan status 'failed'</p>
+            <div className="text-2xl font-bold" style={{ color: colors.primaryText }}>{callLogs.filter(call => call.status === 'failed').length}</div>
+            <p className="text-xs text-muted-foreground" style={{ color: colors.secondaryText }}>Panggilan dengan status 'failed'</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Chart Visualisasi */}
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <CardHeader>
-            <CardTitle>Ringkasan Status Panggilan</CardTitle>
+            <CardTitle style={{ color: colors.primaryText }}>Ringkasan Status Panggilan</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+                <XAxis dataKey="name" fontSize={12} stroke={colors.secondaryText} tick={{ fill: colors.secondaryText }} />
+                <YAxis fontSize={12} stroke={colors.secondaryText} tick={{ fill: colors.secondaryText }} />
+                <Tooltip cursor={{ fill: colors.accentHover }} contentStyle={{ backgroundColor: colors.card, borderColor: colors.border, color: colors.primaryText }} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -160,49 +173,49 @@ export default function AgentDetailPage({ params }: { params: { id: string } }) 
         </Card>
         
         {/* Placeholder untuk chart lain */}
-        <Card>
+        <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
              <CardHeader>
-                <CardTitle>Aktivitas Panggilan</CardTitle>
-                <CardDescription>Placeholder untuk chart aktivitas lainnya.</CardDescription>
+                <CardTitle style={{ color: colors.primaryText }}>Aktivitas Panggilan</CardTitle>
+                <CardDescription style={{ color: colors.secondaryText }}>Placeholder untuk chart aktivitas lainnya.</CardDescription>
              </CardHeader>
              <CardContent className="flex items-center justify-center h-[280px]">
-                <p className="text-muted-foreground">Chart akan datang</p>
+                <p className="text-muted-foreground" style={{ color: colors.secondaryText }}>Chart akan datang</p>
              </CardContent>
         </Card>
       </div>
 
       {/* Tabel Log Panggilan */}
-      <Card>
+      <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
         <CardHeader>
-          <CardTitle>Log Panggilan</CardTitle>
-          <CardDescription>
+          <CardTitle style={{ color: colors.primaryText }}>Log Panggilan</CardTitle>
+          <CardDescription style={{ color: colors.secondaryText }}>
             Daftar detail dari setiap panggilan yang telah dilakukan oleh agen.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Kontak</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Durasi</TableHead>
-                <TableHead className="text-right">Tanggal</TableHead>
+              <TableRow style={{ color: colors.primaryText, borderColor: colors.border }}>
+                <TableHead style={{ color: colors.secondaryText }}>Kontak</TableHead>
+                <TableHead style={{ color: colors.secondaryText }}>Status</TableHead>
+                <TableHead className="text-right" style={{ color: colors.secondaryText }}>Durasi</TableHead>
+                <TableHead className="text-right" style={{ color: colors.secondaryText }}>Tanggal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {callLogs.map((log) => (
-                <TableRow key={log.id}>
+                <TableRow key={log.id} style={{ color: colors.primaryText, borderColor: colors.border }}>
                   <TableCell>
-                    <div className="font-medium">{log.contactName}</div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="font-medium" style={{ color: colors.primaryText }}>{log.contactName}</div>
+                    <div className="text-sm text-muted-foreground" style={{ color: colors.secondaryText }}>
                       {log.contactNumber}
                     </div>
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={log.status} />
                   </TableCell>
-                  <TableCell className="text-right">{log.duration}</TableCell>
-                  <TableCell className="text-right">{log.date}</TableCell>
+                  <TableCell className="text-right" style={{ color: colors.primaryText }}>{log.duration}</TableCell>
+                  <TableCell className="text-right" style={{ color: colors.primaryText }}>{log.date}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

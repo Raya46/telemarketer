@@ -11,6 +11,18 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { logout } from "@/app/(actions)/auth/actions";
 
+// Palet warna yang sama dari halaman sebelumnya
+const colors = {
+  background: "#1C162C",
+  card: "#2A2342",
+  primaryText: "#E0DDF1",
+  secondaryText: "#A09CB9",
+  accent: "#7F56D9",
+  accentHover: "#6941C6",
+  activeBackground: "rgba(127, 86, 217, 0.1)", // Background lembut untuk item aktif
+  border: "#423966",
+};
+
 const dashboardMenu = [
   {
     href: "/dashboard/agents",
@@ -41,31 +53,51 @@ export function SidebarDashboard() {
   };
 
   return (
-    <SidebarContent>
+    <SidebarContent
+      style={{
+        backgroundColor: colors.background,
+        borderRight: `1px solid ${colors.border}`,
+      }}
+      className="flex flex-col h-full"
+    >
       <SidebarMenu>
-        {dashboardMenu.map((item) => (
-          <SidebarMenuItem key={item.href}>
-            <Link href={item.href} passHref>
-              <SidebarMenuButton
-                isActive={pathname.startsWith(item.href)}
-                className="w-full"
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </SidebarMenuButton>
-            </Link>
-          </SidebarMenuItem>
-        ))}
+        {dashboardMenu.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          return (
+            <SidebarMenuItem key={item.href}>
+              <Link href={item.href} passHref className="w-full">
+                <SidebarMenuButton
+                  isActive={isActive}
+                  className="w-full transition-colors duration-200"
+                  style={{
+                    backgroundColor: isActive
+                      ? colors.activeBackground
+                      : "transparent",
+                    color: isActive ? colors.accent : colors.secondaryText,
+                  }}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarMenu>
       <div className="mt-auto">
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link href="/auth/login" passHref>
-              <SidebarMenuButton onClick={handleLogout} className="w-full">
+            {/* Menggunakan form untuk logout agar sesuai dengan Server Actions */}
+            <form action={logout} className="w-full">
+              <SidebarMenuButton
+                type="submit"
+                className="w-full transition-colors duration-200"
+                style={{ color: colors.secondaryText }}
+              >
                 <LogOut className="w-4 h-4" />
                 <span>Logout</span>
               </SidebarMenuButton>
-            </Link>
+            </form>
           </SidebarMenuItem>
         </SidebarMenu>
       </div>

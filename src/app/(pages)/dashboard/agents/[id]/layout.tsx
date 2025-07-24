@@ -1,5 +1,9 @@
 "use client";
 
+const colors = {
+  background: "#1C162C",
+};
+
 export default function AgentLayout({
   children,
   params,
@@ -7,5 +11,9 @@ export default function AgentLayout({
   children: React.ReactNode;
   params: { id: string };
 }) {
-  return <>{children}</>;
+  return (
+    <div style={{ backgroundColor: colors.background }}>
+      {children}
+    </div>
+  );
 }
