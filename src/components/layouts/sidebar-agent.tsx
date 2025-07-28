@@ -3,21 +3,20 @@
 import {
   SidebarContent,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
-  History,
-  Settings,
-  BrainCircuit,
-  Bot,
   Bolt,
-  FileText,
+  BrainCircuit,
   ChevronLeft,
+  FileText,
+  History,
   PersonStanding,
+  Settings
 } from "lucide-react";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 // Palet warna yang sama dari halaman sebelumnya
 const colors = {
@@ -28,6 +27,7 @@ const colors = {
   accent: "#7F56D9",
   accentHover: "#6941C6",
   activeBackground: "rgba(127, 86, 217, 0.1)", // Background lembut untuk item aktif
+  border: "#3A3352", // Menambahkan warna border
 };
 
 
