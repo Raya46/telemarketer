@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useConversation } from "@elevenlabs/react";
-import { Lead } from "@/types/supabase";
+import { Lead, Agent } from "@/types/supabase";
+import { Mic, MicOff } from "lucide-react";
 
 const colors = {
   card: "#2A2342",
@@ -20,63 +20,228 @@ const colors = {
 };
 
 interface TranscriptMessage {
-  role: "user" | "ai" | "tool" | "system";
+  role: "user" | "assistant";
   text: string;
+  timestamp: Date;
+}
+
+interface OpenAIMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
 }
 
 export function LiveCallModal({
   isOpen,
   onClose,
   lead,
+  agent,
 }: {
   isOpen: boolean;
   onClose: () => void;
   lead: Lead | null;
+  agent: Agent | null;
 }) {
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
+  const [statusText, setStatusText] = useState("Idle");
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const { startSession, endSession, isSpeaking, status } = useConversation({
-    onMessage: (msg) => {
-      setTranscript((prev) => [
-        ...prev,
-        { role: msg.source, text: msg.message },
-      ]);
-    },
-    onError: (err) => {
-      console.error("Conversational AI Error:", err);
-    },
-  });
+  const conversationHistoryRef = useRef<OpenAIMessage[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+
+  const buildSystemPrompt = (agent: Agent, lead: Lead): string => {
+    return `You are an expert AI telemarketer. Your designated personality and instructions are below.
+
+    ### AGENT PROFILE ###
+    - Your Agent Type: ${agent.agent_type}
+    - Your Voice Tone: ${agent.tone}
+    - Language: ${agent.language}
+
+    ### LEAD INFORMATION (The person you are calling) ###
+    - Name: ${lead.full_name}
+    - Phone: ${lead.phone_number}
+    - Email: ${lead.email || "Not provided"}
+
+    ### YOUR PRIMARY GOALS ###
+    ${agent.goals}
+
+    ### BACKGROUND & CONTEXT ###
+    ${agent.background}
+
+    ### STRICT INSTRUCTIONS YOU MUST FOLLOW ###
+    ${agent.instructions}
+
+    ### SCRIPT GUIDELINES (Use as a reference, be natural, not robotic) ###
+    ${agent.script}
+
+    ### CRITICAL RULES ###
+    1.  Always maintain the specified tone: ${agent.tone}.
+    2.  Keep responses conversational and concise (max 2-3 sentences).
+    3.  Address the lead by their name, ${lead.full_name}, when appropriate.
+    4.  If the call needs to end or you need to leave a voicemail, use this exact message: "${
+      agent.voicemail_message
+    }"
+    5.  You are a speaking AI. Your language must be natural for speech, not formal writing.
+    `;
+  };
 
   useEffect(() => {
-    const checkMicrophone = async () => {
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        console.error("Microphone access denied:", err);
-      }
-    };
-    checkMicrophone();
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
+    if (isOpen && agent && lead) {
       setTranscript([]);
-
-      startSession({
-        agentId: "agent_6501k16552psem6rpfq04xj2gczr",
-        connectionType: "webrtc",
-      });
+      setStatusText("Ready to record");
+      const systemPrompt = buildSystemPrompt(agent, lead);
+      conversationHistoryRef.current = [
+        { role: "system", content: systemPrompt },
+      ];
+      if (agent.welcome_message) {
+        speakText(agent.welcome_message, true);
+      }
     }
-    return () => {
-      endSession();
-    };
-  }, [isOpen]);
+  }, [isOpen, agent, lead]);
 
-  const getStatusText = () => {
-    if (status === "connecting") return "Connecting...";
-    if (status === "connected") return "Call in progress";
-    if (status === "disconnected") return "Call ended";
-    return "Idle";
+  const speakText = async (text: string, isWelcomeMessage = false) => {
+    if (!text) return;
+    setStatusText("AI is speaking...");
+    setIsSpeaking(true);
+
+    try {
+      const response = await fetch("/api/openai/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: "nova" }),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch TTS audio.");
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const newTranscript: TranscriptMessage = {
+        role: "assistant",
+        text: text,
+        timestamp: new Date(),
+      };
+      setTranscript((prev) => [...prev, newTranscript]);
+
+      if (!isWelcomeMessage) {
+        conversationHistoryRef.current.push({
+          role: "assistant",
+          content: text,
+        });
+      } else {
+        conversationHistoryRef.current.push({
+          role: "assistant",
+          content: text,
+        });
+      }
+
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.src = audioUrl;
+        audioPlayerRef.current.play();
+        audioPlayerRef.current.onended = () => {
+          setIsSpeaking(false);
+          setStatusText("Ready to record");
+          URL.revokeObjectURL(audioUrl);
+        };
+      }
+    } catch (error) {
+      console.error("Error in speakText:", error);
+      setIsSpeaking(false);
+      setStatusText("Error playing audio");
+    }
+  };
+
+  const startRecording = async () => {
+    if (isRecording) return;
+    setStatusText("Listening...");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: "audio/webm",
+      });
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        setStatusText("Processing speech...");
+
+        if (audioChunksRef.current.length === 0) {
+          console.error("No audio data was recorded.");
+          setStatusText("No audio detected. Please try again.");
+          setIsRecording(false);
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/webm",
+        });
+        const audioFile = new File([audioBlob], "recording.webm", {
+          type: "audio/webm",
+        });
+
+        const formData = new FormData();
+        formData.append("audio", audioFile);
+
+        try {
+          const sttResponse = await fetch("/api/openai/stt", {
+            method: "POST",
+            body: formData,
+          });
+          if (!sttResponse.ok) throw new Error("STT request failed.");
+          const { text: userMessage } = await sttResponse.json();
+
+          if (userMessage) {
+            const userTranscript: TranscriptMessage = {
+              role: "user",
+              text: userMessage,
+              timestamp: new Date(),
+            };
+            setTranscript((prev) => [...prev, userTranscript]);
+            conversationHistoryRef.current.push({
+              role: "user",
+              content: userMessage,
+            });
+
+            const chatResponse = await fetch("/api/openai/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                messages: conversationHistoryRef.current,
+              }),
+            });
+            if (!chatResponse.ok) throw new Error("Chat request failed.");
+            const aiMessage = await chatResponse.json();
+            const aiResponseText = aiMessage.content;
+
+            await speakText(aiResponseText);
+          } else {
+            setStatusText("Could not understand audio. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error processing audio:", error);
+          setStatusText("Failed to process speech.");
+        }
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Could not start recording:", error);
+      setStatusText("Microphone access denied.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   return (
@@ -87,54 +252,78 @@ export function LiveCallModal({
       >
         <DialogHeader className="p-6 pb-2">
           <DialogTitle style={{ color: colors.primaryText }}>
-            {lead ? `Calling ${lead.full_name}` : "Assistant Demo"}
+            {lead ? `Calling ${lead.full_name}` : "AI Assistant Call"}
           </DialogTitle>
+          <p style={{ color: colors.secondaryText, fontSize: "0.9rem" }}>
+            Agent: {agent?.agent_type} | Tone: {agent?.tone}
+          </p>
         </DialogHeader>
 
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6 p-6 overflow-hidden">
-          {/* Sisi Kiri: Visualisasi Audio */}
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="audio-visualizer mb-4">
-              {Array.from({ length: 30 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`bar ${isSpeaking ? "speaking" : ""}`}
-                  style={{
-                    animationDelay: `${i * 0.05}s`,
-                    backgroundColor: colors.accent,
-                  }}
-                ></div>
-              ))}
-            </div>
-            <p style={{ color: colors.secondaryText }}>
-              {isSpeaking ? "Assistant is speaking..." : "Listening..."}
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isSpeaking}
+              className="w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 disabled:opacity-50"
+              style={{
+                backgroundColor: isRecording ? "#DC2626" : colors.accent,
+              }}
+            >
+              {isRecording ? (
+                <MicOff size={40} color="white" />
+              ) : (
+                <Mic size={40} color="white" />
+              )}
+            </button>
+            <p
+              style={{ color: colors.secondaryText }}
+              className="text-center h-5"
+            >
+              {statusText}
             </p>
           </div>
 
-          {/* Sisi Kanan: Transkrip */}
-          <div className="flex flex-col-reverse h-full overflow-y-auto space-y-4 space-y-reverse pr-2">
-            {transcript.map((msg: TranscriptMessage, index: number) => (
-              <div
-                key={index}
-                className={`flex ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
+          <div className="flex flex-col h-full">
+            <h3
+              style={{ color: colors.primaryText }}
+              className="font-bold mb-3"
+            >
+              Conversation Transcript
+            </h3>
+            <div className="flex-grow overflow-y-auto space-y-3 pr-2">
+              {transcript.map((msg, index) => (
                 <div
-                  className="max-w-xs md:max-w-sm p-3 rounded-lg"
-                  style={{
-                    backgroundColor:
-                      msg.role === "user" ? colors.accent : colors.border,
-                    color: colors.primaryText,
-                  }}
+                  key={index}
+                  className={`flex ${
+                    msg.role === "user" ? "justify-end" : "justify-start"
+                  }`}
                 >
-                  <p className="font-bold text-sm mb-1 capitalize">
-                    {msg.role}
-                  </p>
-                  <p>{msg.text}</p>
+                  <div
+                    className="max-w-xs md:max-w-sm p-3 rounded-lg"
+                    style={{
+                      backgroundColor:
+                        msg.role === "user" ? colors.accent : colors.border,
+                      color: colors.primaryText,
+                    }}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="font-bold text-sm capitalize">
+                        {msg.role === "user"
+                          ? lead?.full_name || "User"
+                          : "AI Agent"}
+                      </p>
+                      <p className="text-xs opacity-70">
+                        {msg.timestamp.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <p className="text-sm">{msg.text}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
@@ -142,22 +331,16 @@ export function LiveCallModal({
           className="p-4 border-t"
           style={{ borderColor: colors.border }}
         >
-          <div className="flex items-center w-full justify-between">
-            <div
-              className="flex items-center gap-2"
-              style={{ color: colors.primaryText }}
+          <div className="flex items-center w-full justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
             >
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  status === "connected"
-                    ? "bg-green-500 animate-pulse"
-                    : "bg-gray-500"
-                }`}
-              ></div>
-              {getStatusText()}
-            </div>
+              End Call
+            </button>
           </div>
         </DialogFooter>
+        <audio ref={audioPlayerRef} hidden />
       </DialogContent>
     </Dialog>
   );

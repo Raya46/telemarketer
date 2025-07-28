@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -29,8 +23,9 @@ import {
   TestTubeDiagonal,
 } from "lucide-react";
 import { CallWithDetails } from "@/app/(actions)/dashboard/actions";
-import { Lead } from "@/types/supabase";
+import { Agent, Lead } from "@/types/supabase";
 import { AddLeadModal } from "../modals/add-lead-modal";
+
 import { LiveCallModal } from "../modals/live-call-modal";
 
 const colors = {
@@ -74,11 +69,11 @@ const StatusBadge = ({ status }: { status: string | null }) => {
 export function CallHistoryClient({
   initialCalls,
   initialLeads,
-  agentId,
+  agent,
 }: {
   initialCalls: CallWithDetails[];
   initialLeads: Lead[];
-  agentId: string;
+  agent: Agent | null;
 }) {
   const [isAddLeadModalOpen, setAddLeadModalOpen] = useState(false);
   const [isLiveCallModalOpen, setLiveCallModalOpen] = useState(false);
@@ -98,12 +93,25 @@ export function CallHistoryClient({
   });
 
   const handleCall = (lead: Lead) => {
+    if (!agent) return;
     setSelectedLead(lead);
     setLiveCallModalOpen(true);
   };
 
   const handleTestAssistant = () => {
-    setSelectedLead(null); // Tidak ada lead spesifik untuk demo
+    if (!agent) return;
+
+    const demoLead: Lead = {
+      id: "demo-lead-01",
+      full_name: "Test Caller",
+      phone_number: "N/A",
+      email: "test@example.com",
+      created_at: new Date().toISOString(),
+      status: "new",
+      address: "new",
+      last_contacted_at: null,
+    };
+    setSelectedLead(demoLead);
     setLiveCallModalOpen(true);
   };
 
@@ -113,7 +121,9 @@ export function CallHistoryClient({
         isOpen={isAddLeadModalOpen}
         onClose={() => setAddLeadModalOpen(false)}
       />
+      {/* PERBAIKAN: Teruskan seluruh objek 'agent' ke LiveCallModal */}
       <LiveCallModal
+        agent={agent}
         isOpen={isLiveCallModalOpen}
         onClose={() => setLiveCallModalOpen(false)}
         lead={selectedLead}
@@ -147,6 +157,7 @@ export function CallHistoryClient({
             <Button
               onClick={handleTestAssistant}
               variant="outline"
+              disabled={!agent}
               style={{ borderColor: colors.border, color: colors.primaryText }}
             >
               <TestTubeDiagonal className="w-4 h-4 mr-2" />
@@ -166,7 +177,7 @@ export function CallHistoryClient({
           <CardContent>
             <Table>
               <TableHeader>
-                <TableRow style={{ color: colors.primaryText }}>
+                <TableRow style={{ borderBottomColor: colors.border }}>
                   <TableHead style={{ color: colors.secondaryText }}>
                     Contact
                   </TableHead>
@@ -189,7 +200,13 @@ export function CallHistoryClient({
               </TableHeader>
               <TableBody>
                 {displayList.map((item) => (
-                  <TableRow key={item.id} style={{ color: colors.primaryText }}>
+                  <TableRow
+                    key={item.id}
+                    style={{
+                      borderBottomColor: colors.border,
+                      color: colors.primaryText,
+                    }}
+                  >
                     <TableCell>
                       <div className="font-medium">{item.contactName}</div>
                       <div
@@ -227,41 +244,23 @@ export function CallHistoryClient({
                         : "N/A"}
                     </TableCell>
                     <TableCell className="text-right">
-                      {item.status === "not_contacted" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleCall(
-                              initialLeads.find((l) => l.id === item.id)!
-                            )
-                          }
-                          style={{
-                            backgroundColor: colors.accent,
-                            color: colors.primaryText,
-                          }}
-                        >
-                          <Phone className="h-4 w-4 mr-2" /> Call
-                        </Button>
-                      )}
-                      {(item.status === "failed" ||
-                        item.status === "no-answer") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleCall(
-                              initialLeads.find((l) => l.id === item.id)!
-                            )
-                          }
-                          style={{
-                            borderColor: colors.border,
-                            color: colors.primaryText,
-                          }}
-                        >
-                          <PhoneForwarded className="h-4 w-4 mr-2" /> Call Back
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!agent}
+                        onClick={() =>
+                          handleCall(
+                            initialLeads.find((l) => l.id === item.id)!
+                          )
+                        }
+                        style={{
+                          backgroundColor: colors.accent,
+                          color: "white",
+                          borderColor: colors.accent,
+                        }}
+                      >
+                        <Phone className="h-4 w-4 mr-2" /> Call
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
