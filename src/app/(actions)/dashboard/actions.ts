@@ -134,8 +134,30 @@ export async function createLead(
     return { success: false, message: "Failed to create lead." };
   }
 
-  // PERBAIKAN: Merevalidasi seluruh layout '/dashboard/agents' untuk mengatasi peringatan
-  // dan memastikan semua halaman yang relevan diperbarui.
+  
+  
   revalidatePath('/dashboard/agents', 'layout');
   return { success: true, message: "Lead created successfully." };
+}
+
+export async function getAgentById(agentId: string): Promise<Agent | null> {
+  
+  const supabase = await createClient();
+
+  
+  const { data, error } = await supabase
+    .from('ai_agents') 
+    .select('*') 
+    .eq('id', agentId) 
+    .single(); 
+
+  
+  
+  if (error) {
+    console.error("Supabase error - Gagal mengambil agent by ID:", error.message);
+    return null;
+  }
+
+  
+  return data;
 }
