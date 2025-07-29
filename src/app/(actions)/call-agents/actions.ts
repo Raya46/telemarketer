@@ -2,10 +2,18 @@
 
 import OpenAI from "openai";
 import { toFile } from "openai/uploads";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+
+
+const elevenlabs = new ElevenLabsClient({
+  apiKey: process.env.ELEVENLABS_API_KEY_2,
+});
+
 
 
 interface OpenAIMessage {
@@ -27,13 +35,6 @@ interface TTSResult {
     error?: string;
 }
 
-/**
- * Server Action untuk memproses audio dari pengguna, mendapatkan balasan dari GPT,
- * dan mengubah balasan tersebut menjadi audio dalam satu kali jalan.
- * @param formData - Data formulir yang berisi file audio rekaman.
- * @param conversationHistory - Riwayat percakapan saat ini.
- * @returns Objek yang berisi pesan pengguna, balasan AI, dan buffer audio dari balasan AI.
- */
 export async function processAudioAndGetResponse(
   formData: FormData,
   conversationHistory: OpenAIMessage[]
@@ -71,54 +72,53 @@ export async function processAudioAndGetResponse(
     }
 
     
-    
-    
-    
-    const mp3 = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "nova", 
-        input: aiResponse,
+    const audioStream = await elevenlabs.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", { 
+        text: aiResponse,
+        modelId: "eleven_multilingual_v2",
     });
-    const audioBuffer = await mp3.arrayBuffer();
+
+    
+    const chunks: Buffer[] = [];
+    for await (const chunk of audioStream) {
+        chunks.push(chunk);
+    }
+    const content = Buffer.concat(chunks);
+    const audioBuffer = content.buffer as ArrayBuffer;
 
     
     return { userMessage, aiResponse, audioBuffer };
 
   } catch (error) {
     console.error("[SERVER_ACTION_ERROR]", error);
-    if (error instanceof OpenAI.APIError) {
-        return { error: `OpenAI Error: ${error.message}` };
-    }
-    return { error: "An unexpected error occurred." };
+    return { error: "An unexpected error occurred during processing." };
   }
 }
 
 
-/**
- * Server Action terpisah yang hanya menangani Text-to-Speech.
- * Berguna untuk pesan selamat datang atau pesan lain yang tidak memerlukan input pengguna.
- * @param text - Teks yang ingin diubah menjadi suara.
- * @returns Objek yang berisi buffer audio atau pesan error.
- */
 export async function getTextToSpeechAudio(text: string): Promise<TTSResult> {
     if (!text) {
         return { error: "No text provided for speech synthesis." };
     }
 
     try {
-        const mp3 = await openai.audio.speech.create({
-            model: "tts-1",
-            voice: "nova", 
-            input: text,
+        
+        const audioStream = await elevenlabs.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", { 
+            text: text,
+            modelId: "eleven_multilingual_v2",
         });
-        const audioBuffer = await mp3.arrayBuffer();
+
+        
+        const chunks: Buffer[] = [];
+        for await (const chunk of audioStream) {
+            chunks.push(chunk);
+        }
+        const content = Buffer.concat(chunks);
+        const audioBuffer = content.buffer as ArrayBuffer;
+
         return { audioBuffer };
 
     } catch (error) {
         console.error("[TTS_ACTION_ERROR]", error);
-        if (error instanceof OpenAI.APIError) {
-            return { error: `OpenAI TTS Error: ${error.message}` };
-        }
-        return { error: "Failed to generate audio." };
+        return { error: "Failed to generate audio from ElevenLabs." };
     }
 }
