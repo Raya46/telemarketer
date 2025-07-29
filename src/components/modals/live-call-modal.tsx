@@ -1,6 +1,5 @@
 "use client";
-
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +8,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Lead, Agent } from "@/types/supabase";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Loader2 } from "lucide-react";
 import {
+  processTextAndGetResponse,
   getTextToSpeechAudio,
-  processAudioAndGetResponse,
 } from "@/app/(actions)/call-agents/actions";
+import { useDeepgramTranscription } from "@/hooks/use-deepgram-transcription";
 
 const colors = {
   card: "#2A2342",
@@ -27,6 +27,7 @@ interface TranscriptMessage {
   role: "user" | "assistant";
   text: string;
   timestamp: Date;
+  isStreaming?: boolean;
 }
 
 interface OpenAIMessage {
@@ -47,75 +48,167 @@ export function LiveCallModal({
 }) {
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
   const [statusText, setStatusText] = useState("Idle");
-  const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const conversationHistoryRef = useRef<OpenAIMessage[]>([]);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<ArrayBuffer[]>([]);
+  const isProcessingAudioRef = useRef(false);
+
+  const {
+    isListening,
+    liveTranscript,
+    startListening,
+    stopListening,
+    setOnTranscriptReady,
+  } = useDeepgramTranscription();
 
   const buildSystemPrompt = (agent: Agent, lead: Lead): string => {
     return `You are an expert AI telemarketer. Your designated personality and instructions are below.
-
     ### AGENT PROFILE ###
     - Your Agent Type: ${agent.agent_type}
     - Your Voice Tone: ${agent.tone}
     - Language: ${agent.language}
-
     ### LEAD INFORMATION (The person you are calling) ###
     - Name: ${lead.full_name}
     - Phone: ${lead.phone_number}
     - Email: ${lead.email || "Not provided"}
-
     ### YOUR PRIMARY GOALS ###
     ${agent.goals}
-
     ### BACKGROUND & CONTEXT ###
     ${agent.background}
-
     ### STRICT INSTRUCTIONS YOU MUST FOLLOW ###
     ${agent.instructions}
-
     ### SCRIPT GUIDELINES (Use as a reference, be natural, not robotic) ###
     ${agent.script}
-
     ### CRITICAL RULES ###
-    1.  Always maintain the specified tone: ${agent.tone}.
-    2.  Keep responses conversational and concise (max 2-3 sentences).
-    3.  Address the lead by their name, ${lead.full_name}, when appropriate.
-    4.  If the call needs to end or you need to leave a voicemail, use this exact message: "${
+    1. Always maintain the specified tone: ${agent.tone}.
+    2. Keep responses conversational and concise (max 2-3 sentences).
+    3. Address the lead by their name, ${lead.full_name}, when appropriate.
+    4. If the call needs to end or you need to leave a voicemail, use this exact message: "${
       agent.voicemail_message
     }"
-    5.  You are a speaking AI. Your language must be natural for speech, not formal writing.
+    5. You are a speaking AI. Your language must be natural for speech, not formal writing.
+    6. Respond quickly and naturally. Keep responses under 50 words for real-time conversation.
     `;
   };
 
-  useEffect(() => {
-    if (isOpen && agent && lead) {
-      setTranscript([]);
-      setStatusText("Ready to record");
-      const systemPrompt = buildSystemPrompt(agent, lead);
-      conversationHistoryRef.current = [
-        { role: "system", content: systemPrompt },
-      ];
-      if (agent.welcome_message) {
-        speakWelcomeMessage(agent.welcome_message);
-      }
+  const processAudioQueue = useCallback(async () => {
+    if (isProcessingAudioRef.current || audioQueueRef.current.length === 0)
+      return;
+
+    isProcessingAudioRef.current = true;
+    const audioBuffer = audioQueueRef.current.shift()!;
+    const audioBlob = new Blob([audioBuffer], { type: "audio/mpeg" });
+    const audioUrl = URL.createObjectURL(audioBlob);
+
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.src = audioUrl;
+      audioPlayerRef.current.play();
+      audioPlayerRef.current.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        isProcessingAudioRef.current = false;
+
+        if (audioQueueRef.current.length > 0) {
+          processAudioQueue();
+        } else {
+          setIsSpeaking(false);
+          setStatusText("Ready to listen");
+          if (!isListening && !isProcessing) {
+            startListening();
+          }
+        }
+      };
     }
-  }, [isOpen, agent, lead]);
+  }, [isListening, isProcessing, startListening]);
+
+  const handleUserSpeech = useCallback(
+    async (userText: string) => {
+      if (!userText.trim() || isSpeaking || isProcessing) return;
+
+      stopListening();
+      setIsProcessing(true);
+      setStatusText("AI is thinking...");
+
+      const userTranscript: TranscriptMessage = {
+        role: "user",
+        text: userText,
+        timestamp: new Date(),
+      };
+      setTranscript((prev) => [...prev, userTranscript]);
+      conversationHistoryRef.current.push({ role: "user", content: userText });
+
+      const streamingMessageIndex = transcript.length + 1;
+      const streamingMessage: TranscriptMessage = {
+        role: "assistant",
+        text: "",
+        timestamp: new Date(),
+        isStreaming: true,
+      };
+      setTranscript((prev) => [...prev, streamingMessage]);
+
+      try {
+        const result = await processTextAndGetResponse(
+          conversationHistoryRef.current
+        );
+        if (result.error) throw new Error(result.error);
+
+        if (result.aiResponse && result.audioBuffer) {
+          setIsProcessing(false);
+          setTranscript((prev) =>
+            prev.map((msg, index) =>
+              index === streamingMessageIndex
+                ? { ...msg, text: result.aiResponse!, isStreaming: false }
+                : msg
+            )
+          );
+          conversationHistoryRef.current.push({
+            role: "assistant",
+            content: result.aiResponse,
+          });
+
+          audioQueueRef.current.push(result.audioBuffer);
+          if (!isProcessingAudioRef.current) {
+            setIsSpeaking(true);
+            setStatusText("AI is speaking...");
+            processAudioQueue();
+          }
+        }
+      } catch (error) {
+        console.error("Error processing text via Server Action:", error);
+        setStatusText("Failed to get AI response.");
+        setIsSpeaking(false);
+        setIsProcessing(false);
+        setTranscript((prev) =>
+          prev.filter((_, index) => index !== streamingMessageIndex)
+        );
+        setTimeout(() => startListening(), 1000);
+      }
+    },
+    [
+      isSpeaking,
+      isProcessing,
+      stopListening,
+      transcript.length,
+      processAudioQueue,
+      startListening,
+    ]
+  );
+
+  useEffect(() => {
+    setOnTranscriptReady(handleUserSpeech);
+  }, [handleUserSpeech, setOnTranscriptReady]);
 
   const speakWelcomeMessage = async (text: string) => {
     setStatusText("AI is speaking...");
     setIsSpeaking(true);
-
     const welcomeTranscript: TranscriptMessage = {
       role: "assistant",
       text: text,
       timestamp: new Date(),
     };
     setTranscript([welcomeTranscript]);
-
     conversationHistoryRef.current.push({ role: "assistant", content: text });
 
     try {
@@ -123,136 +216,66 @@ export function LiveCallModal({
       if (result.error || !result.audioBuffer)
         throw new Error(result.error || "No audio buffer received.");
 
-      const audioBlob = new Blob([result.audioBuffer], { type: "audio/mpeg" });
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.src = audioUrl;
-        audioPlayerRef.current.play();
-        audioPlayerRef.current.onended = () => {
-          setIsSpeaking(false);
-          setStatusText("Ready to record");
-          URL.revokeObjectURL(audioUrl);
-        };
-      }
+      audioQueueRef.current.push(result.audioBuffer);
+      processAudioQueue();
     } catch (error) {
       console.error("Error in speakWelcomeMessage:", error);
       setIsSpeaking(false);
       setStatusText("Error playing audio");
+      setTimeout(() => startListening(), 1000);
     }
   };
 
-  const startRecording = async () => {
-    if (isRecording) return;
-    setStatusText("Listening...");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: "audio/webm",
-      });
-      audioChunksRef.current = [];
+  useEffect(() => {
+    if (isOpen && agent && lead) {
+      setTranscript([]);
+      audioQueueRef.current = [];
+      const systemPrompt = buildSystemPrompt(agent, lead);
+      conversationHistoryRef.current = [
+        { role: "system", content: systemPrompt },
+      ];
+      if (agent.welcome_message) {
+        speakWelcomeMessage(agent.welcome_message);
+      } else {
+        setTimeout(() => startListening(), 500);
+      }
+    } else {
+      stopListening();
+    }
+    return () => {
+      stopListening();
+      audioQueueRef.current = [];
+    };
+  }, [isOpen, agent, lead]);
 
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        setStatusText("Processing speech...");
-
-        if (audioChunksRef.current.length === 0) {
-          console.error("No audio data was recorded.");
-          setStatusText("No audio detected. Please try again.");
-          setIsRecording(false);
-          return;
-        }
-
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
-        const audioFile = new File([audioBlob], "recording.webm", {
-          type: "audio/webm",
-        });
-
-        const formData = new FormData();
-        formData.append("audio", audioFile);
-
-        try {
-          const result = await processAudioAndGetResponse(
-            formData,
-            conversationHistoryRef.current
-          );
-
-          if (result.error) throw new Error(result.error);
-
-          if (result.userMessage) {
-            const userTranscript: TranscriptMessage = {
-              role: "user",
-              text: result.userMessage,
-              timestamp: new Date(),
-            };
-            setTranscript((prev) => [...prev, userTranscript]);
-            conversationHistoryRef.current.push({
-              role: "user",
-              content: result.userMessage,
-            });
-          }
-
-          if (result.aiResponse && result.audioBuffer) {
-            setStatusText("AI is speaking...");
-            setIsSpeaking(true);
-
-            const assistantTranscript: TranscriptMessage = {
-              role: "assistant",
-              text: result.aiResponse,
-              timestamp: new Date(),
-            };
-            setTranscript((prev) => [...prev, assistantTranscript]);
-            conversationHistoryRef.current.push({
-              role: "assistant",
-              content: result.aiResponse,
-            });
-
-            const audioBlob = new Blob([result.audioBuffer], {
-              type: "audio/mpeg",
-            });
-            const audioUrl = URL.createObjectURL(audioBlob);
-
-            if (audioPlayerRef.current) {
-              audioPlayerRef.current.src = audioUrl;
-              audioPlayerRef.current.play();
-              audioPlayerRef.current.onended = () => {
-                setIsSpeaking(false);
-                setStatusText("Ready to record");
-                URL.revokeObjectURL(audioUrl);
-              };
-            }
-          }
-        } catch (error) {
-          console.error("Error processing audio via Server Action:", error);
-          setStatusText("Failed to process speech.");
-          setIsSpeaking(false);
-        }
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Could not start recording:", error);
-      setStatusText("Microphone access denied.");
+  const handleToggleListening = () => {
+    if (isSpeaking || isProcessing) return;
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+  const handleEndCall = () => {
+    stopListening();
+    audioQueueRef.current = [];
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.src = "";
     }
+    onClose();
+  };
+
+  const getStatusDisplay = () => {
+    if (isProcessing) return "AI is thinking...";
+    if (isSpeaking) return "AI is speaking...";
+    if (isListening) return liveTranscript || "Listening...";
+    return statusText;
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleEndCall}>
       <DialogContent
         className="max-w-4xl h-[80vh] flex flex-col p-0"
         style={{ backgroundColor: colors.card, borderColor: colors.border }}
@@ -265,18 +288,21 @@ export function LiveCallModal({
             Agent: {agent?.agent_type} | Tone: {agent?.tone}
           </p>
         </DialogHeader>
-
         <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6 p-6 overflow-hidden">
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <button
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isSpeaking}
-              className="w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 disabled:opacity-50"
+              onClick={handleToggleListening}
+              disabled={isSpeaking || isProcessing}
+              className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 disabled:opacity-50 ${
+                isListening ? "animate-pulse" : ""
+              }`}
               style={{
-                backgroundColor: isRecording ? "#DC2626" : colors.accent,
+                backgroundColor: isListening ? "#DC2626" : colors.accent,
               }}
             >
-              {isRecording ? (
+              {isProcessing ? (
+                <Loader2 size={40} color="white" className="animate-spin" />
+              ) : isListening ? (
                 <MicOff size={40} color="white" />
               ) : (
                 <Mic size={40} color="white" />
@@ -284,12 +310,11 @@ export function LiveCallModal({
             </button>
             <p
               style={{ color: colors.secondaryText }}
-              className="text-center h-5"
+              className="text-center h-5 px-4"
             >
-              {statusText}
+              {getStatusDisplay()}
             </p>
           </div>
-
           <div className="flex flex-col h-full">
             <h3
               style={{ color: colors.primaryText }}
@@ -314,7 +339,7 @@ export function LiveCallModal({
                     }}
                   >
                     <div className="flex justify-between items-center mb-1">
-                      <p className="font-bold text-sm capitalize">
+                      <p className="font-bold text-sm capitalize flex items-center gap-1">
                         {msg.role === "user"
                           ? lead?.full_name || "User"
                           : "AI Agent"}
@@ -326,24 +351,28 @@ export function LiveCallModal({
                         })}
                       </p>
                     </div>
-                    <p className="text-sm">{msg.text}</p>
+                    <p className="text-sm whitespace-pre-wrap">
+                      {msg.text}
+                      {msg.isStreaming && (
+                        <span className="inline-block w-2 h-4 bg-white animate-pulse ml-1"></span>
+                      )}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
-
         <DialogFooter
           className="p-4 border-t"
           style={{ borderColor: colors.border }}
         >
           <div className="flex items-center w-full justify-end">
             <button
-              onClick={onClose}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              onClick={handleEndCall}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
             >
-              End Call
+              <PhoneOff size={16} /> End Call
             </button>
           </div>
         </DialogFooter>

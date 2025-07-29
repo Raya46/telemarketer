@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@deepgram/sdk": "^4.11.1",
     "@elevenlabs/elevenlabs-js": "^2.7.0",
     "@elevenlabs/react": "^0.4.1",
     "@radix-ui/react-avatar": "^1.1.10",
