@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Lead, Agent } from "@/types/supabase";
 import { Mic, MicOff } from "lucide-react";
+import {
+  getTextToSpeechAudio,
+  processAudioAndGetResponse,
+} from "@/app/(actions)/call-agents/actions";
 
 const colors = {
   card: "#2A2342",
@@ -96,45 +100,31 @@ export function LiveCallModal({
         { role: "system", content: systemPrompt },
       ];
       if (agent.welcome_message) {
-        speakText(agent.welcome_message, true);
+        speakWelcomeMessage(agent.welcome_message);
       }
     }
   }, [isOpen, agent, lead]);
 
-  const speakText = async (text: string, isWelcomeMessage = false) => {
-    if (!text) return;
+  const speakWelcomeMessage = async (text: string) => {
     setStatusText("AI is speaking...");
     setIsSpeaking(true);
 
+    const welcomeTranscript: TranscriptMessage = {
+      role: "assistant",
+      text: text,
+      timestamp: new Date(),
+    };
+    setTranscript([welcomeTranscript]);
+
+    conversationHistoryRef.current.push({ role: "assistant", content: text });
+
     try {
-      const response = await fetch("/api/openai/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "nova" }),
-      });
+      const result = await getTextToSpeechAudio(text);
+      if (result.error || !result.audioBuffer)
+        throw new Error(result.error || "No audio buffer received.");
 
-      if (!response.ok) throw new Error("Failed to fetch TTS audio.");
-      const audioBlob = await response.blob();
+      const audioBlob = new Blob([result.audioBuffer], { type: "audio/mpeg" });
       const audioUrl = URL.createObjectURL(audioBlob);
-
-      const newTranscript: TranscriptMessage = {
-        role: "assistant",
-        text: text,
-        timestamp: new Date(),
-      };
-      setTranscript((prev) => [...prev, newTranscript]);
-
-      if (!isWelcomeMessage) {
-        conversationHistoryRef.current.push({
-          role: "assistant",
-          content: text,
-        });
-      } else {
-        conversationHistoryRef.current.push({
-          role: "assistant",
-          content: text,
-        });
-      }
 
       if (audioPlayerRef.current) {
         audioPlayerRef.current.src = audioUrl;
@@ -146,7 +136,7 @@ export function LiveCallModal({
         };
       }
     } catch (error) {
-      console.error("Error in speakText:", error);
+      console.error("Error in speakWelcomeMessage:", error);
       setIsSpeaking(false);
       setStatusText("Error playing audio");
     }
@@ -189,43 +179,60 @@ export function LiveCallModal({
         formData.append("audio", audioFile);
 
         try {
-          const sttResponse = await fetch("/api/openai/stt", {
-            method: "POST",
-            body: formData,
-          });
-          if (!sttResponse.ok) throw new Error("STT request failed.");
-          const { text: userMessage } = await sttResponse.json();
+          const result = await processAudioAndGetResponse(
+            formData,
+            conversationHistoryRef.current
+          );
 
-          if (userMessage) {
+          if (result.error) throw new Error(result.error);
+
+          if (result.userMessage) {
             const userTranscript: TranscriptMessage = {
               role: "user",
-              text: userMessage,
+              text: result.userMessage,
               timestamp: new Date(),
             };
             setTranscript((prev) => [...prev, userTranscript]);
             conversationHistoryRef.current.push({
               role: "user",
-              content: userMessage,
+              content: result.userMessage,
+            });
+          }
+
+          if (result.aiResponse && result.audioBuffer) {
+            setStatusText("AI is speaking...");
+            setIsSpeaking(true);
+
+            const assistantTranscript: TranscriptMessage = {
+              role: "assistant",
+              text: result.aiResponse,
+              timestamp: new Date(),
+            };
+            setTranscript((prev) => [...prev, assistantTranscript]);
+            conversationHistoryRef.current.push({
+              role: "assistant",
+              content: result.aiResponse,
             });
 
-            const chatResponse = await fetch("/api/openai/chat", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                messages: conversationHistoryRef.current,
-              }),
+            const audioBlob = new Blob([result.audioBuffer], {
+              type: "audio/mpeg",
             });
-            if (!chatResponse.ok) throw new Error("Chat request failed.");
-            const aiMessage = await chatResponse.json();
-            const aiResponseText = aiMessage.content;
+            const audioUrl = URL.createObjectURL(audioBlob);
 
-            await speakText(aiResponseText);
-          } else {
-            setStatusText("Could not understand audio. Please try again.");
+            if (audioPlayerRef.current) {
+              audioPlayerRef.current.src = audioUrl;
+              audioPlayerRef.current.play();
+              audioPlayerRef.current.onended = () => {
+                setIsSpeaking(false);
+                setStatusText("Ready to record");
+                URL.revokeObjectURL(audioUrl);
+              };
+            }
           }
         } catch (error) {
-          console.error("Error processing audio:", error);
+          console.error("Error processing audio via Server Action:", error);
           setStatusText("Failed to process speech.");
+          setIsSpeaking(false);
         }
       };
 
