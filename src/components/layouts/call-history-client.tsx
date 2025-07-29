@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -18,14 +18,13 @@ import {
   X,
   Clock,
   PhoneMissed,
-  PhoneForwarded,
   PlusIcon,
   TestTubeDiagonal,
 } from "lucide-react";
 import { CallWithDetails } from "@/app/(actions)/dashboard/actions";
 import { Agent, Lead } from "@/types/supabase";
 import { AddLeadModal } from "../modals/add-lead-modal";
-
+// Impor LiveCallModal yang akan kita gunakan
 import { LiveCallModal } from "../modals/live-call-modal";
 
 const colors = {
@@ -34,7 +33,6 @@ const colors = {
   primaryText: "#E0DDF1",
   secondaryText: "#A09CB9",
   accent: "#7F56D9",
-  accentHover: "#6941C6",
   border: "#423966",
 };
 
@@ -76,8 +74,12 @@ export function CallHistoryClient({
   agent: Agent | null;
 }) {
   const [isAddLeadModalOpen, setAddLeadModalOpen] = useState(false);
-  const [isLiveCallModalOpen, setLiveCallModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+
+  // State untuk mengontrol visibilitas modal panggilan
+  const [isLiveCallModalOpen, setLiveCallModalOpen] = useState(false);
+
+  // Hook useWebRTCAudioSession telah dipindahkan ke LiveCallModal
 
   const displayList = initialLeads.map((lead) => {
     const callForLead = initialCalls.find((call) => call.lead_id === lead.id);
@@ -92,15 +94,16 @@ export function CallHistoryClient({
     };
   });
 
-  const handleCall = (lead: Lead) => {
+  // Fungsi ini sekarang memilih lead dan membuka modal
+  const handleInitiateCall = (lead: Lead) => {
     if (!agent) return;
     setSelectedLead(lead);
     setLiveCallModalOpen(true);
   };
 
+  // Fungsi ini membuat lead demo dan membuka modal
   const handleTestAssistant = () => {
     if (!agent) return;
-
     const demoLead: Lead = {
       id: "demo-lead-01",
       full_name: "Test Caller",
@@ -108,7 +111,7 @@ export function CallHistoryClient({
       email: "test@example.com",
       created_at: new Date().toISOString(),
       status: "new",
-      address: "new",
+      address: "N/A",
       last_contacted_at: null,
     };
     setSelectedLead(demoLead);
@@ -121,12 +124,13 @@ export function CallHistoryClient({
         isOpen={isAddLeadModalOpen}
         onClose={() => setAddLeadModalOpen(false)}
       />
-      {/* PERBAIKAN: Teruskan seluruh objek 'agent' ke LiveCallModal */}
+
+      {/* Render LiveCallModal dan kontrol visibilitasnya dengan state */}
       <LiveCallModal
-        agent={agent}
         isOpen={isLiveCallModalOpen}
         onClose={() => setLiveCallModalOpen(false)}
         lead={selectedLead}
+        agent={agent}
       />
 
       <div
@@ -158,7 +162,10 @@ export function CallHistoryClient({
               onClick={handleTestAssistant}
               variant="outline"
               disabled={!agent}
-              style={{ borderColor: colors.border, color: colors.primaryText }}
+              style={{
+                borderColor: colors.border,
+                color: colors.primaryText,
+              }}
             >
               <TestTubeDiagonal className="w-4 h-4 mr-2" />
               Test Assistant
@@ -167,7 +174,10 @@ export function CallHistoryClient({
         </div>
 
         <Card
-          style={{ backgroundColor: colors.card, borderColor: colors.border }}
+          style={{
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          }}
         >
           <CardHeader>
             <CardTitle style={{ color: colors.primaryText }}>
@@ -249,7 +259,7 @@ export function CallHistoryClient({
                         size="sm"
                         disabled={!agent}
                         onClick={() =>
-                          handleCall(
+                          handleInitiateCall(
                             initialLeads.find((l) => l.id === item.id)!
                           )
                         }
