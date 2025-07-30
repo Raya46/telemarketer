@@ -4,13 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Conversation } from "@/types/conversation";
 import { Agent, Lead } from "@/types/supabase";
-
-// DIPERBAIKI: Tipe yang lebih spesifik untuk menghindari 'any' dan 'Function'
-export interface Tool {
-  name: string;
-  description: string;
-  parameters?: Record<string, unknown>;
-}
+import { Tool } from "@/lib/tools";
 
 // Tipe untuk fungsi yang didaftarkan, menggunakan tipe yang lebih aman
 type RegisteredFunction = (args: Record<string, unknown>) => Promise<unknown> | unknown;
