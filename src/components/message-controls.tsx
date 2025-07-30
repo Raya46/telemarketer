@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import Transcriber from "@/components/ui/transcriber";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +6,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -15,19 +23,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Message as MessageType } from "@/types";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState } from "react";
-import { Terminal } from "lucide-react";
+import Transcriber from "@/components/ui/transcriber";
+import { DataChannelMessage } from "@/hooks/use-webrtc";
 import { Conversation } from "@/types/conversation";
+import { Terminal } from "lucide-react";
+import { useState } from "react";
 
 function FilterControls({
   typeFilter,
@@ -42,7 +42,7 @@ function FilterControls({
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   messageTypes: string[];
-  messages: MessageType[];
+  messages: DataChannelMessage[];
 }) {
   return (
     <div className="flex gap-4 mb-4">
@@ -72,13 +72,12 @@ function FilterControls({
   );
 }
 
-/* ----------------------- MAIN CONTROLS ----------------------- */
 export function MessageControls({
   conversation,
   msgs,
 }: {
   conversation: Conversation[];
-  msgs: MessageType[];
+  msgs: DataChannelMessage[];
 }) {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,4 +146,3 @@ export function MessageControls({
     </div>
   );
 }
-

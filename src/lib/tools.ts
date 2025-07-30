@@ -1,16 +1,14 @@
-// Definisikan tipe untuk parameter terlebih dahulu agar lebih rapi
-interface ToolParameters {
+export interface ToolParameters {
   type: 'object';
   properties: Record<string, {
     type: string;
     description: string;
   }>;
-  // BARU: Tambahkan properti 'required' yang opsional
   required?: string[];
 }
 
-// Perbarui interface Tool utama
-interface Tool {
+// Interface Tool utama yang akan digunakan di seluruh aplikasi
+export interface Tool {
     type: 'function';
     name: string;
     description: string;
@@ -31,32 +29,7 @@ const toolDefinitions = {
         }
         }
     },
-    partyMode: {
-        description: 'Triggers a confetti animation on the page',
-        parameters: {}
-    },
-    launchWebsite: {
-        description: 'Launches a website in the user\'s browser',
-        parameters: {
-        url: {
-            type: 'string',
-            description: 'The URL to launch'
-        }
-        }
-    },
-    copyToClipboard: {
-        description: 'Copies text to the user\'s clipboard',
-        parameters: {
-        text: {
-            type: 'string',
-            description: 'The text to copy'
-        }
-        }
-    },
-    takeScreenshot: {
-        description: 'Takes a screenshot of the current page',
-        parameters: {}
-    },
+    // ... sisa definisi tool Anda ...
     scrapeWebsite: {
         description: 'Scrapes a URL and returns content in markdown and HTML formats',
         parameters: {
@@ -68,7 +41,6 @@ const toolDefinitions = {
     }
 } as const;
 
-// Logika pemetaan Anda sudah benar, tidak perlu diubah
 const tools: Tool[] = Object.entries(toolDefinitions).map(([name, config]) => ({
     type: "function",
     name,
@@ -79,6 +51,4 @@ const tools: Tool[] = Object.entries(toolDefinitions).map(([name, config]) => ({
     }
 }));
 
-
-export type { Tool };
 export { tools };
