@@ -33,7 +33,7 @@ export function Step2CustomizeBehavior({ state, setState }: StepProps) {
         ...prev,
         knowledgeBaseFiles: [
           ...prev.knowledgeBaseFiles,
-          ...Array.from(e.target.files),
+          ...Array.from(e.target.files!),
         ],
       }));
     }
