@@ -71,7 +71,7 @@ export function LiveCallModal({
     // onOpenChange dipicu saat pengguna menutup dialog (misalnya dengan menekan tombol Esc atau mengklik di luar)
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleEndCall()}>
       <DialogContent
-        className="max-w-2xl h-[90vh] flex flex-col p-6"
+        className="max-w-2xl h-[90vh] flex flex-col p-4"
         style={{ backgroundColor: colors.card, borderColor: colors.border }}
       >
         <DialogHeader>
@@ -102,7 +102,7 @@ export function LiveCallModal({
         </div>
 
         <DialogFooter
-          className="p-4 border-t mt-4"
+          className="pt-4 border-t "
           style={{ borderColor: colors.border }}
         >
           <div className="flex items-center w-full justify-end">
