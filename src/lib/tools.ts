@@ -1,15 +1,20 @@
-// Add interface for tools
+// Definisikan tipe untuk parameter terlebih dahulu agar lebih rapi
+interface ToolParameters {
+  type: 'object';
+  properties: Record<string, {
+    type: string;
+    description: string;
+  }>;
+  // BARU: Tambahkan properti 'required' yang opsional
+  required?: string[];
+}
+
+// Perbarui interface Tool utama
 interface Tool {
     type: 'function';
     name: string;
     description: string;
-    parameters?: {
-      type: string;
-      properties: Record<string, {
-        type: string;
-        description: string;
-      }>;
-    };
+    parameters?: ToolParameters;
 }
 
 const toolDefinitions = {
@@ -18,9 +23,9 @@ const toolDefinitions = {
         parameters: {}
     },
     changeBackgroundColor: {
-        description: 'Changes the background color of the page', 
+        description: 'Changes the background color of the page',
         parameters: {
-        color: { 
+        color: {
             type: 'string',
             description: 'Color value (hex, rgb, or color name)'
         }
@@ -63,13 +68,14 @@ const toolDefinitions = {
     }
 } as const;
 
+// Logika pemetaan Anda sudah benar, tidak perlu diubah
 const tools: Tool[] = Object.entries(toolDefinitions).map(([name, config]) => ({
     type: "function",
     name,
     description: config.description,
     parameters: {
-    type: 'object',
-    properties: config.parameters
+      type: 'object',
+      properties: config.parameters
     }
 }));
 

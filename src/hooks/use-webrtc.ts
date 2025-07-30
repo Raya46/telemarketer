@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Conversation } from "@/types/conversation";
-// PERBAIKAN: Impor tipe data Agent dan Lead
 import { Agent, Lead } from "@/types/supabase";
 
 export interface Tool {
@@ -26,21 +25,12 @@ interface UseWebRTCAudioSessionReturn {
   sendTextMessage: (text: string) => void;
 }
 
-/**
- * Hook untuk mengelola sesi WebRTC dengan konteks Agent.
- * @param voice Suara yang digunakan untuk assistant.
- * @param tools Daftar tools yang bisa digunakan AI.
- * @param agent Objek agent yang aktif, berisi instruksi dan detail lainnya.
- * @param lead Objek lead yang sedang dihubungi.
- */
 export default function useWebRTCAudioSession(
   voice: string,
   tools: Tool[],
-  // PERBAIKAN: Tambahkan agent dan lead sebagai parameter
   agent: Agent | null,
-  lead: Lead | null,
+  lead: Lead | null
 ): UseWebRTCAudioSessionReturn {
-  // ... (state lainnya tetap sama)
   const [status, setStatus] = useState("");
   const [isSessionActive, setIsSessionActive] = useState(false);
   const audioIndicatorRef = useRef<HTMLDivElement | null>(null);
@@ -56,33 +46,42 @@ export default function useWebRTCAudioSession(
   const volumeIntervalRef = useRef<number | null>(null);
   const ephemeralUserMessageIdRef = useRef<string | null>(null);
 
-  // ... (fungsi-fungsi lain seperti registerFunction, configureDataChannel, dll tetap sama)
-  function registerFunction(name: string, fn: Function) {
+  const registerFunction = useCallback((name: string, fn: Function) => {
     functionRegistry.current[name] = fn;
-  }
+  }, []);
 
-  function configureDataChannel(dataChannel: RTCDataChannel) {
-    const sessionUpdate = {
-      type: "session.update",
-      session: {
-        modalities: ["text", "audio"],
-        tools: tools || [],
-        input_audio_transcription: { model: "whisper-1" },
-      },
-    };
-    dataChannel.send(JSON.stringify(sessionUpdate));
-    console.log("Session update sent:", sessionUpdate);
+  // DIPERBARUI: Fungsi ini sekarang akan memicu AI untuk berbicara terlebih dahulu
+  const configureDataChannel = useCallback(
+    (dataChannel: RTCDataChannel) => {
+      const sessionUpdate = {
+        type: "session.update",
+        session: {
+          modalities: ["text", "audio"],
+          tools: tools || [],
+          input_audio_transcription: { model: "whisper-1" },
+        },
+      };
+      dataChannel.send(JSON.stringify(sessionUpdate));
+      console.log("Session update sent:", sessionUpdate);
 
-    const languageMessage = {
-      type: "conversation.item.create",
-      item: {
-        type: "message",
-        role: "user",
-        content: [{ type: "input_text", text: "Indonesian" }],
-      },
-    };
-    dataChannel.send(JSON.stringify(languageMessage));
-  }
+      const languageMessage = {
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "Indonesian" }],
+        },
+      };
+      dataChannel.send(JSON.stringify(languageMessage));
+
+      if (agent?.use_welcome_message && agent?.welcome_message) {
+        console.log("Triggering AI to speak the welcome message...");
+        const initialResponseTrigger = { type: "response.create" };
+        dataChannel.send(JSON.stringify(initialResponseTrigger));
+      }
+    },
+    [tools, agent]
+  );
 
   function getOrCreateEphemeralUserId(): string {
     let ephemeralId = ephemeralUserMessageIdRef.current;
@@ -106,7 +105,7 @@ export default function useWebRTCAudioSession(
     const ephemeralId = ephemeralUserMessageIdRef.current;
     if (!ephemeralId) return;
     setConversation((prev) =>
-      prev.map((msg) => (msg.id === ephemeralId ? { ...msg, ...partial } : msg)),
+      prev.map((msg) => (msg.id === ephemeralId ? { ...msg, ...partial } : msg))
     );
   }
 
@@ -114,7 +113,7 @@ export default function useWebRTCAudioSession(
     ephemeralUserMessageIdRef.current = null;
   }
 
-  async function handleDataChannelMessage(event: MessageEvent) {
+  const handleDataChannelMessage = useCallback(async (event: MessageEvent) => {
     try {
       const msg = JSON.parse(event.data);
       switch (msg.type) {
@@ -128,16 +127,28 @@ export default function useWebRTCAudioSession(
           break;
         }
         case "input_audio_buffer.committed": {
-          updateEphemeralUserMessage({ text: "Processing speech...", status: "processing" });
+          updateEphemeralUserMessage({
+            text: "Processing speech...",
+            status: "processing",
+          });
           break;
         }
         case "conversation.item.input_audio_transcription": {
-          const partialText = msg.transcript ?? msg.text ?? "User is speaking...";
-          updateEphemeralUserMessage({ text: partialText, status: "speaking", isFinal: false });
+          const partialText =
+            msg.transcript ?? msg.text ?? "User is speaking...";
+          updateEphemeralUserMessage({
+            text: partialText,
+            status: "speaking",
+            isFinal: false,
+          });
           break;
         }
         case "conversation.item.input_audio_transcription.completed": {
-          updateEphemeralUserMessage({ text: msg.transcript || "", isFinal: true, status: "final" });
+          updateEphemeralUserMessage({
+            text: msg.transcript || "",
+            isFinal: true,
+            status: "final",
+          });
           clearEphemeralUserMessage();
           break;
         }
@@ -153,7 +164,10 @@ export default function useWebRTCAudioSession(
             const lastMsg = prev[prev.length - 1];
             if (lastMsg && lastMsg.role === "assistant" && !lastMsg.isFinal) {
               const updated = [...prev];
-              updated[updated.length - 1] = { ...lastMsg, text: lastMsg.text + msg.delta };
+              updated[updated.length - 1] = {
+                ...lastMsg,
+                text: lastMsg.text + msg.delta,
+              };
               return updated;
             } else {
               return [...prev, newMessage];
@@ -177,7 +191,11 @@ export default function useWebRTCAudioSession(
             const result = await fn(args);
             const response = {
               type: "conversation.item.create",
-              item: { type: "function_call_output", call_id: msg.call_id, output: JSON.stringify(result) },
+              item: {
+                type: "function_call_output",
+                call_id: msg.call_id,
+                output: JSON.stringify(result),
+              },
             };
             dataChannelRef.current?.send(JSON.stringify(response));
             const responseCreate = { type: "response.create" };
@@ -194,15 +212,11 @@ export default function useWebRTCAudioSession(
     } catch (error) {
       console.error("Error handling data channel message:", error);
     }
-  }
+  }, []);
 
-  /**
-   * PERBAIKAN: Fungsi ini sekarang membuat system prompt dinamis
-   * berdasarkan agent dan lead, lalu mengirimkannya ke backend.
-   */
-  async function getEphemeralToken() {
+  const getEphemeralToken = useCallback(async () => {
     try {
-      // Membuat system prompt default jika agent tidak ada
+      // DIPERBARUI: Menambahkan instruksi eksplisit untuk memulai percakapan
       let systemPrompt = `You are an expert AI telemarketer. Your designated personality and instructions are below.
     ### AGENT PROFILE ###
     - Your Agent Type: ${agent?.agent_type}
@@ -221,19 +235,26 @@ export default function useWebRTCAudioSession(
     ### SCRIPT GUIDELINES (Use as a reference, be natural, not robotic) ###
     ${agent?.script}
     ### CRITICAL RULES ###
-    1. Always maintain the specified tone: ${agent?.tone}.
-    2. Keep responses conversational and concise (max 2-3 sentences).
-    3. Address the lead by their name, ${lead?.full_name}, when appropriate.
-    4. If the call needs to end or you need to leave a voicemail, use this exact message: "${
+    1. **Start the conversation immediately** with a warm greeting. Do not wait for the user to speak first. Your first sentence should be: "${
+      agent?.welcome_message || "Halo, ada yang bisa saya bantu?"
+    }"
+    2. Always maintain the specified tone: ${agent?.tone}.
+    3. Keep responses conversational and concise (max 2-3 sentences).
+    4. Address the lead by their name, ${
+      lead?.full_name
+    }, when appropriate.
+    5. If the call needs to end or you need to leave a voicemail, use this exact message: "${
       agent?.voicemail_message
     }"
-    5. You are a speaking AI. Your language must be natural for speech, not formal writing.
-    6. Respond quickly and naturally. Keep responses under 50 words for real-time conversation.
+    6. You are a speaking AI. Your language must be natural for speech, not formal writing.
+    7. Respond quickly and naturally. Keep responses under 50 words for real-time conversation.
+    
+    ### KNOWLEDGE BASE ACCESS ###
+      If you need to find information that is not in your initial instructions or script (like specific product details, terms and conditions, or complex user questions), you MUST use the "search_knowledge_base" tool. Do not make up answers. To use the tool, formulate a clear question based on the user's query.
     `;
-      
+
       console.log("Generated System Prompt:", systemPrompt);
 
-      // Mengirim system prompt ke endpoint API
       const response = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -242,17 +263,18 @@ export default function useWebRTCAudioSession(
 
       if (!response.ok) {
         const errorBody = await response.json();
-        throw new Error(`Failed to get ephemeral token: ${response.status} - ${errorBody.error}`);
+        throw new Error(
+          `Failed to get ephemeral token: ${response.status} - ${errorBody.error}`
+        );
       }
       const data = await response.json();
       return data.client_secret.value;
-
     } catch (err) {
       console.error("getEphemeralToken error:", err);
       setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
       throw err;
     }
-  }
+  }, [agent, lead]);
 
   function setupAudioVisualization(stream: MediaStream) {
     const audioContext = new AudioContext();
@@ -287,7 +309,32 @@ export default function useWebRTCAudioSession(
     return Math.sqrt(sum / dataArray.length);
   }
 
-  async function startSession() {
+  const stopSession = useCallback(() => {
+    if (dataChannelRef.current) dataChannelRef.current.close();
+    if (peerConnectionRef.current) peerConnectionRef.current.close();
+    if (audioContextRef.current) audioContextRef.current.close();
+    if (audioStreamRef.current)
+      audioStreamRef.current.getTracks().forEach((track) => track.stop());
+    if (audioIndicatorRef.current)
+      audioIndicatorRef.current.classList.remove("active");
+    if (volumeIntervalRef.current) clearInterval(volumeIntervalRef.current);
+
+    dataChannelRef.current = null;
+    peerConnectionRef.current = null;
+    audioContextRef.current = null;
+    audioStreamRef.current = null;
+    analyserRef.current = null;
+    volumeIntervalRef.current = null;
+    ephemeralUserMessageIdRef.current = null;
+
+    setCurrentVolume(0);
+    setIsSessionActive(false);
+    setStatus("Session stopped");
+    setMsgs([]);
+    setConversation([]);
+  }, []);
+
+  const startSession = useCallback(async () => {
     try {
       if (!agent) {
         setStatus("Error: Agent context is missing. Cannot start session.");
@@ -354,40 +401,17 @@ export default function useWebRTCAudioSession(
       setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
       stopSession();
     }
-  }
+  }, [agent, voice, getEphemeralToken, configureDataChannel, handleDataChannelMessage, stopSession]);
 
-  function stopSession() {
-    if (dataChannelRef.current) dataChannelRef.current.close();
-    if (peerConnectionRef.current) peerConnectionRef.current.close();
-    if (audioContextRef.current) audioContextRef.current.close();
-    if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach((track) => track.stop());
-    if (audioIndicatorRef.current) audioIndicatorRef.current.classList.remove("active");
-    if (volumeIntervalRef.current) clearInterval(volumeIntervalRef.current);
-
-    dataChannelRef.current = null;
-    peerConnectionRef.current = null;
-    audioContextRef.current = null;
-    audioStreamRef.current = null;
-    analyserRef.current = null;
-    volumeIntervalRef.current = null;
-    ephemeralUserMessageIdRef.current = null;
-
-    setCurrentVolume(0);
-    setIsSessionActive(false);
-    setStatus("Session stopped");
-    setMsgs([]);
-    setConversation([]);
-  }
-
-  function handleStartStopClick() {
+  const handleStartStopClick = useCallback(() => {
     if (isSessionActive) {
       stopSession();
     } else {
       startSession();
     }
-  }
+  }, [isSessionActive, startSession, stopSession]);
 
-  function sendTextMessage(text: string) {
+  const sendTextMessage = useCallback((text: string) => {
     if (!dataChannelRef.current || dataChannelRef.current.readyState !== "open") {
       console.error("Data channel not ready");
       return;
@@ -401,7 +425,7 @@ export default function useWebRTCAudioSession(
       isFinal: true,
       status: "final",
     };
-    setConversation(prev => [...prev, newMessage]);
+    setConversation((prev) => [...prev, newMessage]);
     const message = {
       type: "conversation.item.create",
       item: {
@@ -413,11 +437,11 @@ export default function useWebRTCAudioSession(
     const response = { type: "response.create" };
     dataChannelRef.current.send(JSON.stringify(message));
     dataChannelRef.current.send(JSON.stringify(response));
-  }
+  }, []);
 
   useEffect(() => {
     return () => stopSession();
-  }, []);
+  }, [stopSession]);
 
   return {
     status,
