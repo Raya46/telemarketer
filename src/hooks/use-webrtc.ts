@@ -139,7 +139,7 @@ export default function useWebRTCAudioSession(
           const partialText =
             msg.transcript ?? msg.text ?? "User is speaking...";
           updateEphemeralUserMessage({
-            text: partialText,
+            text: partialText as string,
             status: "speaking",
             isFinal: false,
           });
@@ -147,7 +147,7 @@ export default function useWebRTCAudioSession(
         }
         case "conversation.item.input_audio_transcription.completed": {
           updateEphemeralUserMessage({
-            text: msg.transcript || "",
+            text: msg.transcript as string,
             isFinal: true,
             status: "final",
           });
@@ -158,7 +158,7 @@ export default function useWebRTCAudioSession(
           const newMessage: Conversation = {
             id: uuidv4(),
             role: "assistant",
-            text: msg.delta,
+            text: msg.delta as string,
             timestamp: new Date().toISOString(),
             isFinal: false,
           };
@@ -187,23 +187,25 @@ export default function useWebRTCAudioSession(
           break;
         }
         case "response.function_call_arguments.done": {
-          const fn = functionRegistry.current[msg.name];
-          if (fn) {
-            const args = JSON.parse(msg.arguments);
-            const result = await fn(args);
-            const response = {
-              type: "conversation.item.create",
-              item: {
-                type: "function_call_output",
-                call_id: msg.call_id,
-                output: JSON.stringify(result),
-              },
-            };
-            dataChannelRef.current?.send(JSON.stringify(response));
-            const responseCreate = { type: "response.create" };
-            dataChannelRef.current?.send(JSON.stringify(responseCreate));
-          }
-          break;
+          if (typeof msg.name === 'string') {
+    const fn = functionRegistry.current[msg.name];
+    if (fn) {
+      const args = JSON.parse(String(msg.arguments));
+      const result = await fn(args);
+      const response = {
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: msg.call_id,
+          output: JSON.stringify(result),
+        },
+      };
+      dataChannelRef.current?.send(JSON.stringify(response));
+      const responseCreate = { type: "response.create" };
+      dataChannelRef.current?.send(JSON.stringify(responseCreate));
+    }
+  }
+  break;
         }
         default: {
           break;

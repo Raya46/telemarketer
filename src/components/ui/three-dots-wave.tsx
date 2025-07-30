@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, Transition } from "framer-motion";
 
 const loadingContainer = {
   width: "2rem",
@@ -37,9 +37,11 @@ const loadingCircleVariants = {
   },
 };
 
-const loadingCircleTransition = {
+// PERBAIKAN: Ganti 'yoyo' dengan 'repeat' dan 'repeatType'
+const loadingCircleTransition: Transition = {
   duration: 0.5,
-  yoyo: Infinity,
+  repeat: Infinity, // Menggantikan 'yoyo' untuk pengulangan
+  repeatType: "reverse", // Menentukan jenis pengulangan "bolak-balik"
   ease: "easeInOut",
 };
 
@@ -60,7 +62,7 @@ export default function ThreeDotsWave({
       <motion.span
         style={{
           ...loadingCircle,
-          backgroundColor: `hsl(var(${colorVariable}))`, // Use HSL function for Tailwind CSS variables
+          backgroundColor: `hsl(var(${colorVariable}))`,
         }}
         variants={loadingCircleVariants}
         transition={loadingCircleTransition}
