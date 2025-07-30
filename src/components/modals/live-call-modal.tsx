@@ -97,7 +97,6 @@ export function LiveCallModal({
     handleStartStopClick,
     stopSession,
     conversation,
-    sendTextMessage,
     msgs,
     registerFunction,
   } = useWebRTCAudioSession("ash", combinedTools, agent, lead);
