@@ -5,10 +5,20 @@ import { v4 as uuidv4 } from "uuid";
 import { Conversation } from "@/types/conversation";
 import { Agent, Lead } from "@/types/supabase";
 
+// DIPERBAIKI: Tipe yang lebih spesifik untuk menghindari 'any' dan 'Function'
 export interface Tool {
   name: string;
   description: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
+}
+
+// Tipe untuk fungsi yang didaftarkan, menggunakan tipe yang lebih aman
+type RegisteredFunction = (args: Record<string, unknown>) => Promise<unknown> | unknown;
+
+// Tipe dasar untuk pesan dari data channel, menggunakan 'unknown' daripada 'any'
+interface DataChannelMessage {
+  type: string;
+  [key: string]: unknown;
 }
 
 interface UseWebRTCAudioSessionReturn {
@@ -18,8 +28,8 @@ interface UseWebRTCAudioSessionReturn {
   startSession: () => Promise<void>;
   stopSession: () => void;
   handleStartStopClick: () => void;
-  registerFunction: (name: string, fn: Function) => void;
-  msgs: any[];
+  registerFunction: (name: string, fn: RegisteredFunction) => void;
+  msgs: DataChannelMessage[];
   currentVolume: number;
   conversation: Conversation[];
   sendTextMessage: (text: string) => void;
@@ -38,19 +48,18 @@ export default function useWebRTCAudioSession(
   const audioStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
-  const [msgs, setMsgs] = useState<any[]>([]);
+  const [msgs, setMsgs] = useState<DataChannelMessage[]>([]);
   const [conversation, setConversation] = useState<Conversation[]>([]);
-  const functionRegistry = useRef<Record<string, Function>>({});
+  const functionRegistry = useRef<Record<string, RegisteredFunction>>({});
   const [currentVolume, setCurrentVolume] = useState(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const volumeIntervalRef = useRef<number | null>(null);
   const ephemeralUserMessageIdRef = useRef<string | null>(null);
 
-  const registerFunction = useCallback((name: string, fn: Function) => {
+  const registerFunction = useCallback((name: string, fn: RegisteredFunction) => {
     functionRegistry.current[name] = fn;
   }, []);
 
-  // DIPERBARUI: Fungsi ini sekarang akan memicu AI untuk berbicara terlebih dahulu
   const configureDataChannel = useCallback(
     (dataChannel: RTCDataChannel) => {
       const sessionUpdate = {
@@ -115,7 +124,7 @@ export default function useWebRTCAudioSession(
 
   const handleDataChannelMessage = useCallback(async (event: MessageEvent) => {
     try {
-      const msg = JSON.parse(event.data);
+      const msg: DataChannelMessage = JSON.parse(event.data);
       switch (msg.type) {
         case "input_audio_buffer.speech_started": {
           getOrCreateEphemeralUserId();
@@ -216,8 +225,7 @@ export default function useWebRTCAudioSession(
 
   const getEphemeralToken = useCallback(async () => {
     try {
-      // DIPERBARUI: Menambahkan instruksi eksplisit untuk memulai percakapan
-      let systemPrompt = `You are an expert AI telemarketer. Your designated personality and instructions are below.
+      const systemPrompt = `You are an expert AI telemarketer. Your designated personality and instructions are below.
     ### AGENT PROFILE ###
     - Your Agent Type: ${agent?.agent_type}
     - Your Voice Tone: ${agent?.tone}

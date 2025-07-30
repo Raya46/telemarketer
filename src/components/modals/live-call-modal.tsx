@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { BroadcastButton } from "@/components/broadcast-button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Lead, Agent } from "@/types/supabase";
-import { PhoneOff } from "lucide-react";
-import { BroadcastButton } from "@/components/broadcast-button";
-import { TextInput } from "@/components/text-input";
 import useWebRTCAudioSession from "@/hooks/use-webrtc";
 import { Tool, tools } from "@/lib/tools";
+import { Agent, Lead } from "@/types/supabase";
+import { PhoneOff } from "lucide-react";
+import { useCallback, useEffect, useMemo } from "react";
 import { MessageControls } from "../message-controls";
 
 const colors = {
@@ -35,8 +34,6 @@ export function LiveCallModal({
   lead: Lead | null;
   agent: Agent | null;
 }) {
-  const [voice, setVoice] = useState("ash");
-
   const combinedTools = useMemo(() => {
     const agentSpecificTools: Tool[] = [
       {
@@ -100,10 +97,9 @@ export function LiveCallModal({
     handleStartStopClick,
     stopSession,
     conversation,
-    sendTextMessage,
     msgs,
     registerFunction,
-  } = useWebRTCAudioSession(voice, combinedTools, agent, lead);
+  } = useWebRTCAudioSession("ash", combinedTools, agent, lead);
 
   useEffect(() => {
     if (registerFunction) {
@@ -115,6 +111,7 @@ export function LiveCallModal({
     if (isOpen && !isSessionActive) {
       handleStartStopClick();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isSessionActive]); // Hapus handleStartStopClick dari dependensi
 
   const handleEndCall = () => {
@@ -147,10 +144,6 @@ export function LiveCallModal({
 
           <div className="w-full flex-grow flex flex-col gap-2 overflow-y-auto">
             <MessageControls conversation={conversation} msgs={msgs} />
-          </div>
-
-          <div className="w-full mt-auto">
-            <TextInput onSubmit={sendTextMessage} disabled={!isSessionActive} />
           </div>
         </div>
 

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -134,7 +133,7 @@ export default async function AgentsPage() {
             >
               No Agents Found
             </h3>
-            <p>Click on "Create New Agent" to get started!</p>
+            <p>Click on Create New Agent to get started!</p>
           </div>
         )}
       </div>
