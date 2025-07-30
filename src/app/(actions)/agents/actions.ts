@@ -8,7 +8,8 @@ import { unstable_noStore as noStore } from "next/cache";
 
 type ActionResult = {
   success: boolean;
-  message: string;
+  error?:string;
+  agentId?:string;
 };
 
 export interface Agent {
@@ -51,95 +52,113 @@ export async function getAgentsForUser(): Promise<Agent[]> {
   }
   
 
-export async function createAgent(formData: FormData): Promise<ActionResult | void> {
-  const supabase = await createClient();
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    console.error("User not authenticated", userError);
-    return { success: false, message: "Authentication failed. Please log in again." };
-  }
-
-  const agentName = formData.get("agentName") as string;
-  const language = formData.get("language") as string;
-  const voice = formData.get("voice") as string;
-  const twilioNumber = formData.get("twilioNumber") as string | null;
-  const useWelcomeMessage = formData.get("useWelcomeMessage") === 'true';
-  const welcomeMessage = formData.get("welcomeMessage") as string | null;
-  const voicemailMessage = formData.get("voicemailMessage") as string | null;
-  const callRecordings = formData.get("callRecordings") === 'true';
-  const agentType = formData.get("agentType") as string;
-  const tone = formData.get("tone") as string;
-  const goals = formData.get("goals") as string | null;
-  const background = formData.get("background") as string | null;
-  const instructions = formData.get("instructions") as string | null;
-  const useScript = formData.get("useScript") === 'true';
-  const script = formData.get("script") as string | null;
-  const includeEmail = formData.get("includeEmail") === 'true';
-  const requireName = formData.get("requireName") === 'true';
-  const requirePhone = formData.get("requirePhone") === 'true';
-  const avatarFile = formData.get("avatarFile") as File | null;
-
-  if (!agentName || agentName.trim() === "") {
-    return { success: false, message: "Agent name is required." };
-  }
-  
-  let avatarUrl: string | null = null;
-
-  if (avatarFile && avatarFile.size > 0) {
-    const filePath = `avatars/${user.id}/${Date.now()}_${avatarFile.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from('agent-assets') 
-      .upload(filePath, avatarFile);
-
-    if (uploadError) {
-      console.error("Avatar upload error:", uploadError);
-      return { success: false, message: "Failed to upload avatar." };
-    }
+export async function createAgent(formData: FormData): Promise<ActionResult> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    const { data: { publicUrl } } = supabase.storage
-      .from('agent-assets') 
-      .getPublicUrl(filePath);
-    avatarUrl = publicUrl;
-  }
+    const rawData = Object.fromEntries(formData.entries());
 
-  const agentPayload = {
-    user_id: user.id,
-    agent_name: agentName,
-    language: language,
-    voice: voice,
-    twilio_phone_number: twilioNumber,
-    use_welcome_message: useWelcomeMessage,
-    welcome_message: welcomeMessage,
-    voicemail_message: voicemailMessage,
-    call_recordings_enabled: callRecordings,
-    agent_type: agentType,
-    tone: tone,
-    goals: goals,
-    background: background,
-    instructions: instructions,
-    use_script: useScript,
-    script: script,
-    include_email_in_form: includeEmail,
-    require_name_in_form: requireName,
-    require_phone_in_form: requirePhone,
-    avatar_url: avatarUrl,
-  };
-  
-  const { data: newAgent, error: insertError } = await supabase
-    .from('ai_agents')
-    .insert(agentPayload)
-    .select('id')
-    .single();
+    
+    const agentData = {
+        agent_name: rawData.agentName as string,
+        language: rawData.language as string,
+        voice: rawData.voice as string,
+        twilio_phone_number: rawData.twilioNumber as string,
+        use_welcome_message: rawData.useWelcomeMessage === 'true',
+        welcome_message: rawData.welcomeMessage as string,
+        voicemail_message: rawData.voicemailMessage as string,
+        agent_type: rawData.agentType as string,
+        tone: rawData.tone as string,
+        goals: rawData.goals as string,
+        background: rawData.background as string,
+        instructions: rawData.instructions as string,
+        use_script: rawData.useScript === 'true',
+        script: rawData.script as string,
+        include_email_in_form: rawData.includeEmail === 'true',
+        user_id: user?.id
+    };
 
-  if (insertError) {
-    console.error("Agent insert error:", insertError);
-    if (insertError.message.includes('duplicate key value violates unique constraint')) {
-       return { success: false, message: "This Twilio phone number is already in use." };
+    const avatarFile = formData.get('avatarFile') as File | null;
+    const knowledgeBaseFile = formData.get('knowledgeBaseFile') as File | null;
+
+    if (!agentData.agent_name) {
+        return { success: false, error: "Agent name is required." };
     }
-    return { success: false, message: "Failed to create agent in database." };
-  }
 
-  revalidatePath("/dashboard/agents", "layout");
-  redirect(`/dashboard/agents/${newAgent.id}`);
+    
+    const { data: newAgent, error: agentInsertError } = await supabase
+        .from('ai_agents') 
+        .insert(agentData)
+        .select('id')
+        .single();
+
+    if (agentInsertError || !newAgent) {
+        console.error('Agent Insert Error:', agentInsertError);
+        return { success: false, error: "Failed to create agent record." };
+    }
+
+    const agentId = newAgent.id; 
+    let avatarUrl = '';
+
+    
+    if (avatarFile && avatarFile.size > 0) {
+        const avatarPath = `public/avatars/${agentId}/${avatarFile.name}`;
+        const { error: uploadError } = await supabase.storage
+            .from('agent-assets')
+            .upload(avatarPath, avatarFile);
+
+        if (uploadError) {
+            console.error('Avatar Upload Error:', uploadError);
+            
+        } else {
+            const { data: { publicUrl } } = supabase.storage
+                .from('agent-assets')
+                .getPublicUrl(avatarPath);
+            avatarUrl = publicUrl;
+
+            
+            const { error: updateError } = await supabase
+                .from('ai_agents')
+                .update({ avatar_url: avatarUrl })
+                .eq('id', agentId);
+
+            if (updateError) {
+                console.error('Agent Avatar Update Error:', updateError);
+                
+            }
+        }
+    }
+
+    
+    if (knowledgeBaseFile && knowledgeBaseFile.size > 0) {
+        const knowledgeFilePath = `knowledge-files/${agentId}/${knowledgeBaseFile.name}`;
+        
+        const { error: knowledgeUploadError } = await supabase.storage
+            .from('agent-assets')
+            .upload(knowledgeFilePath, knowledgeBaseFile);
+
+        if (knowledgeUploadError) {
+            console.error('Knowledge File Upload Error:', knowledgeUploadError);
+            return { success: false, error: "Failed to upload knowledge base file." };
+        }
+
+        const { error: knowledgeInsertError } = await supabase
+            .from('agent_knowledge_files')
+            .insert({
+                agent_id: agentId,
+                file_path: knowledgeFilePath,
+                file_name: knowledgeBaseFile.name,
+                processing_status: 'pending', 
+            });
+
+        if (knowledgeInsertError) {
+            console.error('Knowledge Insert Error:', knowledgeInsertError);
+            return { success: false, error: "Failed to record knowledge base file." };
+        }
+    }
+
+    revalidatePath("/agents"); 
+    redirect(`/dashboard/agents/${agentId}`)
+
+    return { success: true, agentId: agentId };
 }

@@ -24,7 +24,6 @@ import {
 import { CallWithDetails } from "@/app/(actions)/dashboard/actions";
 import { Agent, Lead } from "@/types/supabase";
 import { AddLeadModal } from "../modals/add-lead-modal";
-// Impor LiveCallModal yang akan kita gunakan
 import { LiveCallModal } from "../modals/live-call-modal";
 
 const colors = {
