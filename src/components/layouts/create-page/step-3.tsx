@@ -8,7 +8,7 @@ import type { StepProps } from "@/utils/create-static/data";
 import { colors } from "@/utils/create-static/data";
 import { CheckCircle, Copy } from "lucide-react";
 
-export function Step3EmbedAndSuccess({ state, setState }: StepProps) {
+export function Step3EmbedAndSuccess({ state }: StepProps) {
   // Jika agentId sudah ada, tampilkan halaman sukses
   if (state.createdAgentId) {
     const embedCode = `<script src="https://your-domain.com/embed/${state.createdAgentId}.js"></script>`;
