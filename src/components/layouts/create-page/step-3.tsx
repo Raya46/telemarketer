@@ -1,14 +1,12 @@
-import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, Copy } from "lucide-react";
-import { colors } from "@/utils/create-static/data";
 import type { StepProps } from "@/utils/create-static/data";
+import { colors } from "@/utils/create-static/data";
+import { CheckCircle, Copy } from "lucide-react";
 
 export function Step3EmbedAndSuccess({ state, setState }: StepProps) {
   // Jika agentId sudah ada, tampilkan halaman sukses
@@ -26,7 +24,7 @@ export function Step3EmbedAndSuccess({ state, setState }: StepProps) {
           Agent Created Successfully!
         </h2>
         <p style={{ color: colors.secondaryText }}>
-          Your agent "{state.agentName}" is now live. Use the details below to
+          Your agent: {state.agentName} is now live. Use the details below to
           integrate it.
         </p>
         <div className="w-full text-left space-y-6 pt-4">

@@ -6,14 +6,8 @@ const colors = {
 
 export default function AgentLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
-  params: { id: string };
 }) {
-  return (
-    <div style={{ backgroundColor: colors.background }}>
-      {children}
-    </div>
-  );
+  return <div style={{ backgroundColor: colors.background }}>{children}</div>;
 }

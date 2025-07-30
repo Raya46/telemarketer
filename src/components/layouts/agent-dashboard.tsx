@@ -1,5 +1,7 @@
 "use client";
 
+import type { CallWithDetails } from "@/app/(actions)/dashboard/actions";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -15,19 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Check, Clock, Phone, PhoneMissed, X } from "lucide-react";
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
-import { Phone, Check, X, Clock, PhoneMissed } from "lucide-react";
-import type { CallWithDetails } from "@/app/(actions)/dashboard/actions";
 
 const colors = {
   background: "#1C162C",

@@ -217,7 +217,7 @@ export default function useWebRTCAudioSession(
   const getEphemeralToken = useCallback(async () => {
     try {
       // DIPERBARUI: Menambahkan instruksi eksplisit untuk memulai percakapan
-      let systemPrompt = `You are an expert AI telemarketer. Your designated personality and instructions are below.
+      const systemPrompt = `You are an expert AI telemarketer. Your designated personality and instructions are below.
     ### AGENT PROFILE ###
     - Your Agent Type: ${agent?.agent_type}
     - Your Voice Tone: ${agent?.tone}

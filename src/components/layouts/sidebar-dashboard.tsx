@@ -48,9 +48,6 @@ const dashboardMenu = [
 
 export function SidebarDashboard() {
   const pathname = usePathname();
-  const handleLogout = async () => {
-    await logout();
-  };
 
   return (
     <SidebarContent

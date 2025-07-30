@@ -66,7 +66,7 @@ export default function LoginPage() {
                 style={{
                   color: colors.primaryText,
                   borderColor: colors.border,
-                  }}
+                }}
               />
             </div>
             <div className="grid gap-2">
@@ -111,7 +111,7 @@ export default function LoginPage() {
               className="mt-4 text-sm text-center"
               style={{ color: colors.secondaryText }}
             >
-              Don't have an account?{" "}
+              Dont have an account?{" "}
               <Link
                 href="/auth/register"
                 className="underline"
