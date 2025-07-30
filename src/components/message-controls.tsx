@@ -72,6 +72,7 @@ function FilterControls({
   );
 }
 
+/* ----------------------- MAIN CONTROLS ----------------------- */
 export function MessageControls({
   conversation,
   msgs,
@@ -84,10 +85,8 @@ export function MessageControls({
 
   if (conversation.length === 0) return null;
 
-  // Get unique message types
   const messageTypes = ["all", ...new Set(msgs.map((msg) => msg.type))];
 
-  // Filter messages based on type and search query
   const filteredMsgs = msgs.filter((msg) => {
     const matchesType = typeFilter === "all" || msg.type === typeFilter;
     const matchesSearch =
@@ -97,56 +96,55 @@ export function MessageControls({
   });
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium">log</h3>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              view
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-full p-4 mx-auto overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>log</DialogTitle>
-            </DialogHeader>
-            <FilterControls
-              typeFilter={typeFilter}
-              setTypeFilter={setTypeFilter}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              messageTypes={messageTypes}
-              messages={filteredMsgs}
-            />
-            <div className="mt-4">
-              <ScrollArea className="h-[80vh]">
-                <Table className="max-w-full">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>type</TableHead>
-                      <TableHead>content</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMsgs.map((msg, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">
-                          {msg.type}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm whitespace-pre-wrap break-words max-w-full]">
-                          {JSON.stringify(msg, null, 2)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="space-y-4">
+      {/* === BUTTON OPEN LOG === */}
+      <Dialog>
+        <DialogTrigger asChild>
+          {/* <Button variant="outline" size="sm">
+            <Terminal className="w-4 h-4 mr-2" />
+            View Log
+          </Button> */}
+        </DialogTrigger>
+        <DialogContent className="max-w-full p-4 overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Log</DialogTitle>
+          </DialogHeader>
 
-      <Transcriber conversation={conversation.slice(-1)} />
+          <FilterControls
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            messageTypes={messageTypes}
+            messages={filteredMsgs}
+          />
+
+          <ScrollArea className="h-[70vh] bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Content</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMsgs.map((msg, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{msg.type}</TableCell>
+                    <TableCell className="font-mono whitespace-pre-wrap break-words">
+                      {JSON.stringify(msg, null, 2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* === BUBBLE CHAT === */}
+      <Transcriber conversation={conversation} />
     </div>
   );
 }
+

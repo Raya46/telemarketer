@@ -29,9 +29,9 @@ export function TextInput({ onSubmit, disabled = false }: TextInputProps) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={disabled}
-        className="flex-1"
+        className="flex-1 h-12 text-white"
       />
-      <Button type="submit" disabled={disabled || !text.trim()} size="icon">
+      <Button className="text-white" type="submit" disabled={disabled || !text.trim()} size="lg">
         <Send className="h-4 w-4" />
       </Button>
     </form>

@@ -44,7 +44,7 @@ const AvatarFallback = React.forwardRef<
   <AvatarPrimitive.Fallback
     ref={ref}
     className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      "flex h-full w-full items-center justify-center rounded-full bg-muted bg-[#1C162C] text-white",
       className
     )}
     {...props}
@@ -73,59 +73,50 @@ function shouldDisplayMessage(msg: Conversation): boolean {
 /**
  * Single conversation item
  */
+/* ----------------------- BUBBLE ITEM ----------------------- */
 function ConversationItem({ message }: { message: Conversation }) {
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
-  const msgStatus = message.status;
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: isUser ? 20 : -20, y: 10 }}
-      animate={{ opacity: 1, x: 0, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`flex items-start gap-3 ${isUser ? "justify-end" : ""}`}
+      initial={{ opacity: 0, x: isUser ? 20 : -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3 }}
+      className={`flex items-start gap-3 bg-white w-fit max-w-4/5 rounded-lg p-2 ${isUser ? "justify-end place-self-end" : ""}`}
     >
-      {/* Assistant Avatar */}
       {isAssistant && (
         <Avatar className="w-8 h-8 shrink-0">
-          {/* <AvatarImage src="/placeholder-user.jpg" /> */}
           <AvatarFallback>AI</AvatarFallback>
         </Avatar>
       )}
 
-      {/* Message Bubble */}
       <div
         className={`${
           isUser
             ? "bg-primary text-background"
             : "bg-secondary dark:text-foreground"
-        } px-4 py-2 rounded-lg max-w-[70%] motion-preset-slide-up-right`}
+        } rounded-lg  max-w-xs`}
       >
-        {(isUser && msgStatus === "speaking") || msgStatus === "processing" ? (
+        {message.status === "processing" ? (
           <ThreeDotsWave />
         ) : (
           <p>{message.text}</p>
         )}
-
-        {/* Timestamp below */}
-        <div className="text-xs text-muted-foreground">
-          {new Date(message.timestamp).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "numeric",
-          })}
+        <div className="text-xs text-muted-foreground text-right">
+          {new Date(message.timestamp).toLocaleTimeString()}
         </div>
       </div>
 
-      {/* User Avatar */}
       {isUser && (
         <Avatar className="w-8 h-8 shrink-0">
-          {/* <AvatarImage src="/placeholder-user.jpg" /> */}
           <AvatarFallback>You</AvatarFallback>
         </Avatar>
       )}
     </motion.div>
   );
 }
+
 
 interface TranscriberProps {
   conversation: Conversation[];
@@ -145,18 +136,18 @@ export default function Transcriber({ conversation }: TranscriberProps) {
   }, [conversation]);
 
   return (
-    <div className="flex flex-col w-full h-full mx-auto bg-background rounded-lg shadow-lg overflow-hidden dark:bg-background">
+    <div className="flex flex-col w-full h-auto mx-auto bg-background justify-start shadow-lg overflow-hidden dark:bg-background">
       {/* Header */}
-      <div className="bg-secondary px-4 py-3 flex items-center justify-between dark:bg-secondary">
+      {/* <div className="bg-secondary px-4 py-3 flex items-center justify-between dark:bg-secondary">
         <div className="font-medium text-foreground dark:text-foreground">
           Live
         </div>
-      </div>
+      </div> */}
 
       {/* Body */}
       <div
         ref={scrollRef}
-        className="flex-1 h-full overflow-y-auto p-4 space-y-4 z-50 scrollbar-thin scrollbar-thumb-primary"
+        className="flex- h-auto overflow-y-auto space-y-3 z-50 scrollbar-thin scrollbar-thumb-primary "
       >
         <AnimatePresence>
           {displayableMessages.map((message) => (
