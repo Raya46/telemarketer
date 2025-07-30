@@ -9,8 +9,7 @@ import { Tool } from "@/lib/tools";
 // Tipe untuk fungsi yang didaftarkan, menggunakan tipe yang lebih aman
 type RegisteredFunction = (args: Record<string, unknown>) => Promise<unknown> | unknown;
 
-// Tipe dasar untuk pesan dari data channel, menggunakan 'unknown' daripada 'any'
-interface DataChannelMessage {
+export interface DataChannelMessage {
   type: string;
   [key: string]: unknown;
 }

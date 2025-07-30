@@ -57,9 +57,18 @@ export function LiveCallModal({
     return [...tools, ...agentSpecificTools];
   }, []);
 
-  // DIPERBAIKI: Bungkus fungsi dengan useCallback agar stabil dan tidak menyebabkan re-render
   const searchKnowledgeBase = useCallback(
-    async ({ query }: { query: string }) => {
+    async (args: Record<string, unknown>) => {
+      // Lakukan type guarding untuk memastikan 'query' ada dan bertipe string
+      if (typeof args.query !== "string") {
+        const errorMsg =
+          "Invalid or missing 'query' parameter for search_knowledge_base.";
+        console.error(errorMsg);
+        return { error: errorMsg };
+      }
+
+      const query = args.query; // Sekarang 'query' aman untuk digunakan
+
       if (!agent?.id) {
         const errorMsg = "Agent ID is not available to search knowledge base.";
         console.error(errorMsg);
@@ -88,8 +97,8 @@ export function LiveCallModal({
         return { error: "An unknown error occurred during RAG search." };
       }
     },
-    [agent?.id]
-  ); // Dependensi pada agent.id
+    [agent?.id] // Dependensi tetap pada agent.id
+  );
 
   const {
     status,
